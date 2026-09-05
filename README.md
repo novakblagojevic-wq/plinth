@@ -5,7 +5,7 @@
 
 > drop a screenshot, get a studio-lit 3D product shot or a 4-second clip, in the browser, free, no account.
 
-**Live:** https://novakblagojevic-wq.github.io/plinth/
+**Live:** Vercel, production deploy from `main` (URL recorded in PLINTH_SPEC §9 P-2 once the project is connected).
 
 **Status:** pre-alpha, Build Games entry.
 
