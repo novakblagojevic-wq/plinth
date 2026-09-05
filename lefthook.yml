@@ -1,15 +1,12 @@
-# Pre-commit chain (T-V11, SHELL_PLAN S-19). Solo repo, no code review to
-# catch a type error before it lands — this is the cheapest substitute.
+# Pre-commit chain (PLINTH_SPEC §3), ported from Gearfall's S-19 shape.
+# Solo repo, no code review to catch a type error before it lands — this is
+# the cheapest substitute.
 #
 # Formatting is deliberately NOT wired in here: the repo has no
 # formatter/linter yet, and introducing one is a first pass over every
-# file, not a hook config (S-19). Add it as its own standalone commit
-# before adding a `format` step here.
+# file, not a hook config. Add it as its own standalone commit before
+# adding a `format` step here.
 pre-commit:
-  parallel: true
   commands:
     typecheck:
       run: npm run typecheck
-    econ-constant-drift:
-      glob: "packages/economy/src/config.ts"
-      run: npx vitest run packages/economy/test/constants-drift.test.ts

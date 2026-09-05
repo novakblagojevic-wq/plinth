@@ -1,0 +1,33 @@
+{
+  "name": "plinth",
+  "version": "0.0.0",
+  "private": true,
+  "description": "3D mockup studio in the browser. Pre-alpha, Build Games entry.",
+  "license": "MIT",
+  "type": "module",
+  "scripts": {
+    "dev": "vite",
+    "build": "vite build",
+    "preview": "vite preview",
+    "typecheck": "tsc --noEmit",
+    "guards": "vitest run --project guards",
+    "test": "vitest run --project unit",
+    "licenses": "node scripts/licenses.mjs",
+    "ci": "npm run guards && npm run typecheck && npm run test"
+  },
+  "dependencies": {
+    "three": "0.185.1"
+  },
+  "devDependencies": {
+    "@types/node": "22.20.1",
+    "@types/three": "0.185.4",
+    "lefthook": "2.1.12",
+    "playwright": "1.63.0",
+    "typescript": "7.0.2",
+    "vite": "8.2.2",
+    "vitest": "5.0.0"
+  },
+  "engines": {
+    "node": ">=22"
+  }
+}
