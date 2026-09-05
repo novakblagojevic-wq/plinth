@@ -204,7 +204,12 @@ presets as on-screen preview) — Best Replacement and Most Polished survive tha
 Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
 
 ## §9 P-entries (amendments)
-- P-1 — *(pending T-P1)* Three.js version pinned: ______
+- P-1 — Three.js pinned at T-P1 (2026-09-05): `three@0.185.1`, `@types/three@0.185.4`.
+  Upgrade is a ticket with PG re-bless (§3).
+- P-2 — Deploy provider (2026-09-05): **Vercel**, production from `main`, preview
+  deploy per PR. Replaces "Cloudflare Pages or Netlify" in §3; the T-P1 GitHub Pages
+  workflow is removed. Vercel Analytics and Speed Insights stay OFF (§2.2).
+  Live URL: ______ *(pending: filled in when the project is connected)*
 
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
