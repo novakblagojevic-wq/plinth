@@ -219,6 +219,11 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   `?device=` / `?pg=1` query params and the `window.__plinth` QA hook, which are dev and
   capture affordances, not user state (§4.8 hash state remains T-P9). (T-P2 research
   pass, F2.)
+- P-5 — Paper trail (2026-09-05): every §2.7 research pass is committed as
+  `docs/tickets/T-Pn-research.md` (or the research section of `docs/tickets/T-Pn.md`),
+  every ticket as `docs/tickets/T-Pn.md`, every review verdict as a GitHub review on the
+  PR. A finding or verdict that exists only in a chat does not exist. Conventions in
+  `docs/tickets/README.md`.
 
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
