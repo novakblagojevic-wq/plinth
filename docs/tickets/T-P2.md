@@ -160,4 +160,5 @@ orbit and poses (T-P5), any panel UI (F2), keyboard shortcuts and URL hash (T-P9
 
 CI green on the PR (`ci` and `pg-capture` both), five candidates in the artifact,
 `guards/pg-mode.test.ts` proving determinism, unit tests green, no denylist hit.
-You do not merge. You do not grade yourself; review happens in a fresh context.
+You do not merge. You do not grade yourself; review happens in a fresh context
+and is posted on the PR (see `docs/tickets/REVIEW.md`).
