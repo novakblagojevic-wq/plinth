@@ -209,7 +209,7 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
 - P-2 — Deploy provider (2026-09-05): **Vercel**, production from `main`, preview
   deploy per PR. Replaces "Cloudflare Pages or Netlify" in §3; the T-P1 GitHub Pages
   workflow is removed. Vercel Analytics and Speed Insights stay OFF (§2.2).
-  Live URL: ______ *(pending: filled in when the project is connected)*
+  Live URL: https://plinth-phi.vercel.app/
 
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
