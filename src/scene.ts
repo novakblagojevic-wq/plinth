@@ -49,18 +49,15 @@ export function createStage(initial: DeviceId, aspect: number): Stage {
   );
   floor.name = 'floor';
   floor.rotation.x = -Math.PI / 2;
-  floor.receiveShadow = true;
   scene.add(floor);
 
+  // T-P2-fix: no cast shadow. The hard shadow-map shadow from T-P1's
+  // placeholder read as a defect on the live URL; the grounding shadow is
+  // the §4.4 contact shadow, which T-P4 adds. Flat lit until then.
   const key = new DirectionalLight(0xffffff, 3);
   key.name = 'key';
   key.position.set(0.6, 1.2, 0.8);
-  key.castShadow = true;
-  key.shadow.mapSize.set(2048, 2048);
-  key.shadow.camera.near = 0.1;
-  key.shadow.camera.far = 5;
-  key.shadow.camera.left = key.shadow.camera.bottom = -0.5;
-  key.shadow.camera.right = key.shadow.camera.top = 0.5;
+  key.castShadow = false;
   scene.add(key);
 
   const fill = new AmbientLight(0xffffff, 0.45);

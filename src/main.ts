@@ -1,4 +1,4 @@
-import { PCFSoftShadowMap, WebGLRenderer } from 'three';
+import { WebGLRenderer } from 'three';
 import { isDeviceId, type DeviceId } from './devices/presets';
 import type { DeviceSpec } from './devices/spec';
 import { createStage } from './scene';
@@ -37,11 +37,13 @@ if (!(stageEl instanceof HTMLCanvasElement)) {
 }
 const canvas: HTMLCanvasElement = stageEl;
 
-// §4.4: MSAA off by default; export supersamples instead (T-P7).
+// §4.4: MSAA off by default (vault dead-end: default MSAA black-screens on
+// ANGLE-D3D11); on-screen SMAA is T-P4, export supersamples (T-P7). Until
+// T-P4 the preview renders at up to 3× DPR so edges on a 1× monitor are not
+// bare jaggies — T-P2-fix.
+const PREVIEW_DPR_CAP = 3;
 const renderer = new WebGLRenderer({ canvas, antialias: false });
-renderer.setPixelRatio(pg ? 1 : Math.min(window.devicePixelRatio, 2));
-renderer.shadowMap.enabled = true;
-renderer.shadowMap.type = PCFSoftShadowMap;
+renderer.setPixelRatio(pg ? 1 : Math.min(window.devicePixelRatio * 2, PREVIEW_DPR_CAP));
 
 function viewport(): { w: number; h: number } {
   return pg ? { w: PG_SIZE.width, h: PG_SIZE.height } : { w: window.innerWidth, h: window.innerHeight };

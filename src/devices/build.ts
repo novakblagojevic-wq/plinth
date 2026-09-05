@@ -166,8 +166,6 @@ function buildSlab(
     mats.frame,
   );
   frame.name = 'frame';
-  frame.castShadow = true;
-  frame.receiveShadow = true;
   parent.add(frame);
 
   const recess = spec.depth - spec.screenInset;
@@ -211,7 +209,6 @@ function buildSlab(
   const screen = new Mesh(new PlaneGeometry(screenW, screenH), mats.screen);
   screen.name = 'screen';
   screen.position.set(0, screenY, recess);
-  screen.receiveShadow = true;
   parent.add(screen);
 
   return { frame, screen, screenSize: { w: screenW, h: screenH } };
@@ -239,8 +236,6 @@ function buildInto(root: Group, spec: DeviceSpec, mats: Materials, browser: bool
       mats.frame,
     );
     base.name = 'base';
-    base.castShadow = true;
-    base.receiveShadow = true;
     // Lie flat: extrusion (z) becomes thickness (y); shape y becomes −z; hinge line at z=0.
     base.rotation.x = -Math.PI / 2;
     base.position.z = baseD / 2;
@@ -266,8 +261,6 @@ function buildInto(root: Group, spec: DeviceSpec, mats: Materials, browser: bool
       mats.frame,
     );
     plate.name = 'plate';
-    plate.castShadow = true;
-    plate.receiveShadow = true;
     plate.rotation.x = -Math.PI / 2;
     root.add(plate);
     slab.position.y += plateT;
