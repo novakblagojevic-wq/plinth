@@ -5,7 +5,7 @@
 
 > drop a screenshot, get a studio-lit 3D product shot or a 4-second clip, in the browser, free, no account.
 
-**Live:** https://novakblagojevic-wq.github.io/plinth/
+**Live:** https://plinth-phi.vercel.app/
 
 **Status:** pre-alpha, Build Games entry.
 

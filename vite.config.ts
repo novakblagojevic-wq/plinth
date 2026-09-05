@@ -1,7 +1,7 @@
 import { defineConfig } from 'vitest/config';
 
-// Relative base so the same build serves from a domain root (Netlify /
-// Cloudflare Pages) and from a sub-path (GitHub Pages project site).
+// Relative base so the same build serves from a domain root (Vercel, P-2) and
+// from a sub-path, should the provider ever change.
 export default defineConfig({
   base: './',
   build: {
