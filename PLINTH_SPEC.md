@@ -210,6 +210,15 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   deploy per PR. Replaces "Cloudflare Pages or Netlify" in §3; the T-P1 GitHub Pages
   workflow is removed. Vercel Analytics and Speed Insights stay OFF (§2.2).
   Live URL: https://plinth-phi.vercel.app/
+- P-3 — `card` bezel (2026-09-05): §4.2 "no bezel" means *minimal* bezel, so the
+  `screenInset < bezel < cornerRadius` invariant holds for every preset with no special
+  case. `card.bezel = 1 mm`, `card.screenInset = 0.5 mm`. (T-P2 research pass, F1.)
+- P-4 — Panel ticket (2026-09-05): §4.2 "editable in the panel" and §4.9 describe a panel
+  that no §8 row builds. The panel scaffold (vanilla DOM, §4.9 layout) lands in **T-P6**,
+  and every later ticket adds its own section to it. T-P2..T-P5 switch state through
+  `?device=` / `?pg=1` query params and the `window.__plinth` QA hook, which are dev and
+  capture affordances, not user state (§4.8 hash state remains T-P9). (T-P2 research
+  pass, F2.)
 
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
