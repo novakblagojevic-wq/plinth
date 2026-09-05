@@ -145,3 +145,6 @@ vite.config.ts.timestamp-*
 # Playwright
 test-results/
 playwright-report/
+
+# PG capture candidates (PLINTH_SPEC §7); baselines live in fixtures/pg/
+pg-out/
