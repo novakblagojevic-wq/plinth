@@ -1,33 +1,43 @@
 import { describe, expect, it } from 'vitest';
-import { AmbientLight, DirectionalLight, Light } from 'three';
-import { BOX_RADIUS, BOX_SIZE, buildScene } from './scene';
+import { Box3, Frustum, Matrix4, Vector3 } from 'three';
+import { DEVICE_IDS } from './devices/presets';
+import { createStage, FRAME_FILL } from './scene';
 
-describe('placeholder scene (T-P1 smoke)', () => {
-  const { scene, camera, box, plane } = buildScene(16 / 9);
-
-  it('has exactly one box and one plane', () => {
-    expect(scene.getObjectByName('box')).toBe(box);
-    expect(scene.getObjectByName('plane')).toBe(plane);
-    expect(scene.children.filter((c) => c.type === 'Mesh')).toHaveLength(2);
+describe('T-P2 stage', () => {
+  it('mounts the requested device and switches', () => {
+    const stage = createStage('tablet', 16 / 10);
+    expect(stage.getDevice()).toBe('tablet');
+    expect(stage.scene.getObjectByName('device')).toBeDefined();
+    stage.setDevice('laptop');
+    expect(stage.getDevice()).toBe('laptop');
+    expect(stage.getSpec().standType).toBe('hinge');
+    expect(stage.scene.children.filter((c) => c.name === 'device')).toHaveLength(1);
   });
 
-  it('box rests on the plane with rounded corners', () => {
-    box.geometry.computeBoundingBox();
-    const bb = box.geometry.boundingBox!;
-    expect(bb.max.y - bb.min.y).toBeCloseTo(BOX_SIZE, 5);
-    expect(box.position.y).toBeCloseTo(BOX_SIZE / 2, 5);
-    expect(BOX_RADIUS).toBeGreaterThan(0);
-    expect(BOX_RADIUS).toBeLessThan(BOX_SIZE / 2);
-    expect(plane.rotation.x).toBeCloseTo(-Math.PI / 2, 5);
+  it.each(DEVICE_IDS)('%s is fully inside the camera frustum at 1280×800', (id) => {
+    const stage = createStage(id, 1280 / 800);
+    const device = stage.scene.getObjectByName('device')!;
+    stage.scene.updateMatrixWorld(true);
+    stage.camera.updateMatrixWorld(true);
+    const frustum = new Frustum().setFromProjectionMatrix(
+      new Matrix4().multiplyMatrices(stage.camera.projectionMatrix, stage.camera.matrixWorldInverse),
+    );
+    const corners: Vector3[] = [];
+    const box = new Box3().setFromObject(device);
+    for (const x of [box.min.x, box.max.x]) for (const y of [box.min.y, box.max.y]) for (const z of [box.min.z, box.max.z]) {
+      corners.push(new Vector3(x, y, z));
+    }
+    for (const c of corners) expect(frustum.containsPoint(c), `${id} corner ${c.toArray()}`).toBe(true);
   });
 
-  it('is lit by one key light and one fill', () => {
-    const lights = scene.children.filter((c): c is Light => c instanceof Light);
-    expect(lights.filter((l) => l instanceof DirectionalLight)).toHaveLength(1);
-    expect(lights.filter((l) => l instanceof AmbientLight)).toHaveLength(1);
-  });
-
-  it('camera takes the given aspect', () => {
-    expect(camera.aspect).toBeCloseTo(16 / 9, 5);
+  it('fills roughly FRAME_FILL of the frame height', () => {
+    const stage = createStage('phone', 1280 / 800);
+    const device = stage.scene.getObjectByName('device')!;
+    const box = new Box3().setFromObject(device);
+    const top = new Vector3((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2).project(stage.camera);
+    const bottom = new Vector3((box.min.x + box.max.x) / 2, box.min.y, (box.min.z + box.max.z) / 2).project(stage.camera);
+    const fillY = (top.y - bottom.y) / 2; // NDC spans 2
+    expect(fillY).toBeGreaterThan(FRAME_FILL * 0.6);
+    expect(fillY).toBeLessThan(FRAME_FILL * 1.2);
   });
 });

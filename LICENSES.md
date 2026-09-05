@@ -14,7 +14,9 @@ except `three` — everything else is build and test tooling.
 | `@types/node` | 22.20.1 | MIT | dev — type definitions for the guard scripts |
 | `@types/three` | 0.185.4 | MIT | dev — type definitions for three |
 | `lefthook` | 2.1.12 | MIT | dev — pre-commit typecheck (§3) |
+| `pixelmatch` | 7.2.0 | ISC | dev — PG baseline diff (§7) |
 | `playwright` | 1.63.0 | Apache-2.0 | dev — no-network guard (§2.2), later PG capture (§7) |
+| `pngjs` | 7.0.0 | MIT | dev — PNG decode for the PG diff (§7) |
 | `three` | 0.185.1 | MIT | runtime — the stage renderer (§3, pinned as P-1) |
 | `typescript` | 7.0.2 | Apache-2.0 | dev — strict typecheck (§3) |
 | `vite` | 8.2.2 | MIT | dev — bundler and dev/preview server (§3) |

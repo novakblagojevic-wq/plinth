@@ -1,0 +1,22 @@
+# PLINTH_SPEC §7 — PG capture. Renders every device in `?pg=1` mode on the CI
+# runner (SwiftShader is the reference GPU) and diffs against fixtures/pg/.
+# A missing baseline is a warning plus an uploaded candidate — the bless is a
+# human commit (§2.5). A present baseline is a hard gate.
+name: pg-capture
+on: [push, pull_request]
+jobs:
+  pg-capture:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
+      - run: npm run pg:capture
+      - uses: actions/upload-artifact@v4
+        if: always()
+        with:
+          name: pg-candidates
+          path: pg-out/
+          if-no-files-found: warn
