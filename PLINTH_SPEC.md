@@ -231,11 +231,28 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   `MeshPhysicalMaterial`: black base, the picture as emissive, the §4.4.1 glass as its
   clearcoat layer, `toneMapped = false`, and it must stay exempt through the composer
   (F2, F3). *Corrected during T-P4:* the research proposed a second additive glass
-  plane; additive blending into the sRGB-encoded composer target double-counts the
-  reflection, so glass and picture are one material. (3) The contact-shadow plane is the only floor visual; `scene.background` is
+  plane. The composer's targets are sRGB-encoded per fragment, so the blend unit sums
+  ENCODED values — `enc(a) + enc(b)`, never `enc(a + b)` — and the transfer function
+  lifts a small linear reflection into a large step (measured +64…+92 at the screen
+  centre under the bright presets). Nothing is counted twice; the reflection is encoded
+  before it is added. Glass and picture are therefore one material, and the reflection
+  is added in linear light inside the fragment. (3) The contact-shadow plane is the only floor visual; `scene.background` is
   the sweep (F5). (4) The F8 preset table is the recorded starting point for the T-P4
   critic loop; final values are reported in the PR.
 
+- P-7 — T-P4 review fixes (2026-09-06, PR #5 fresh-context review): (1) the composer's
+  render targets are **half float**. `isXRRenderTarget` forces the linear internal
+  format for a multisample renderbuffer while the resolve texture is allocated without
+  it, so an 8-bit target gives `RGBA8` against `SRGB8_ALPHA8`, the multisampled blit is
+  `INVALID_OPERATION`, and the §4.4.6 MSAA opt-in drew nothing; an `SRGB8_ALPHA8`
+  attachment also round-trips the transfer function a second time and loses the top
+  highlight levels (232→233, 252→253, 254→255 measured). Half float fixes both and is
+  guarded by `guards/screen-exempt.test.ts`. (2) Recorded numbers that until now lived
+  only in code: `SCREEN_GLARE_INTENSITY = 0.35` (`envMapIntensity` of the screen's
+  clearcoat — how much of the environment the glass shows), `GLARE_MAX = 24/255` (the
+  bound the guard holds that glare to at the screen centre), and the window intensity
+  of `dark-glass` = 24, which is outside the 4–12 range the research proposed and is
+  the value the critic loop settled on.
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
