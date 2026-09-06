@@ -1,8 +1,20 @@
 /**
- * Guard for PLINTH_SPEC §4.4.5 + P-6 (T-P4 research F2): the screen is exempt
- * from tone mapping THROUGH the composer. A flat #808080 screen must reach the
- * canvas as #808080 (±2) under every scene preset and both tone mappers. If it
- * comes back lighter or darker, AgX/ACES has developed the screenshot.
+ * Guards for the composer's colour path (PLINTH_SPEC §4.4.5, §4.4.6, P-6).
+ *
+ * 1. §4.4.5 + P-6 (T-P4 research F2): the screen is exempt from tone mapping
+ *    THROUGH the composer. A flat #808080 screen must reach the canvas as
+ *    #808080 (±2) under every scene preset and both tone mappers. If it comes
+ *    back lighter or darker, AgX/ACES has developed the screenshot.
+ * 2. Exempt is not enough: the value must survive the chain EXACTLY at the top
+ *    of the range too. An 8-bit sRGB target round-trips the OETF twice and
+ *    loses highlight levels (measured on the first T-P4 build: 232→233,
+ *    240→239, 252→253, 254→255). Half-float targets make it exact; this guard
+ *    is what fails if the target type is changed back.
+ * 3. §4.4.6: the MSAA opt-in must actually draw. With an 8-bit sRGB target the
+ *    multisample blit formats mismatch and `?msaa=1` rendered nothing at all —
+ *    the background, with no device in the frame. Both defects were found by
+ *    the T-P4 fresh-context review (items 1 and 4); these cases exist so they
+ *    cannot come back silently.
  */
 import { afterAll, beforeAll, describe, expect, it } from 'vitest';
 import { build, preview, type PreviewServer } from 'vite';
@@ -36,24 +48,28 @@ afterAll(async () => {
   await server?.close();
 });
 
+type Rgb = [number, number, number];
+
+/** Loads a stage, paints the screen a flat colour, returns the canvas pixel at its centre. */
 async function screenPixel(
   scene: string,
   toneMapping: 'agx' | 'aces',
   glass: boolean,
-): Promise<[number, number, number]> {
+  opts: { query?: string; colour?: string } = {},
+): Promise<Rgb> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${url}?pg=1&device=tablet&scene=${scene}`, { waitUntil: 'load' });
+  await page.goto(`${url}?${opts.query ?? 'pg=1'}&device=tablet&scene=${scene}`, { waitUntil: 'load' });
   await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
   const centre = await page.evaluate(
-    ({ tm, g }) => {
+    ({ tm, g, c }) => {
       window.__plinth.setToneMapping(tm);
       if (!g) window.__plinth.setSpec({ ...window.__plinth.getSpec(), glassClearcoat: 0 });
-      window.__plinth.setScreenColor('#808080');
+      window.__plinth.setScreenColor(c);
       return window.__plinth.screenCentrePx();
     },
-    { tm: toneMapping, g: glass },
+    { tm: toneMapping, g: glass, c: opts.colour ?? '#808080' },
   );
   const canvas = await page.$('canvas#stage');
   const png = PNG.sync.read(await canvas!.screenshot({ type: 'png' }));
@@ -63,7 +79,7 @@ async function screenPixel(
   return [png.data[i]!, png.data[i + 1]!, png.data[i + 2]!];
 }
 
-/** Glare bound: with the glass on, the screen centre may brighten by at most this much (8-bit). */
+/** Glare bound: with the glass on, the screen centre may brighten by at most this much (8-bit, §9 P-7). */
 const GLARE_MAX = 24;
 
 describe('§4.4.5 screen exempt from tone mapping', () => {
@@ -82,6 +98,24 @@ describe('§4.4.5 screen exempt from tone mapping', () => {
     for (const v of [r, g, b]) {
       expect(v - GREY, `${scene} glare rgb(${r},${g},${b})`).toBeGreaterThanOrEqual(-TOLERANCE);
       expect(v - GREY, `${scene} glare rgb(${r},${g},${b})`).toBeLessThanOrEqual(GLARE_MAX);
+    }
+  });
+
+  it('every level survives the chain exactly, highlights included', async () => {
+    // The levels an 8-bit sRGB target got wrong, plus the ends of the range.
+    for (const v of [0, 128, 232, 240, 252, 254, 255]) {
+      const hex = `#${v.toString(16).padStart(2, '0').repeat(3)}`;
+      const [r, g, b] = await screenPixel('soft-studio', 'agx', false, { colour: hex });
+      expect([r, g, b], `${hex} came back rgb(${r},${g},${b})`).toEqual([v, v, v]);
+    }
+  });
+
+  it('§4.4.6 ?msaa=1 draws the device, not just the background', async () => {
+    // The 8-bit sRGB target made the multisample blit illegal and the frame came
+    // back empty; the screen centre was the preset's background colour.
+    const [r, g, b] = await screenPixel('soft-studio', 'agx', false, { query: 'msaa=1' });
+    for (const v of [r, g, b]) {
+      expect(Math.abs(v - GREY), `msaa screen centre rgb(${r},${g},${b})`).toBeLessThanOrEqual(TOLERANCE);
     }
   });
 

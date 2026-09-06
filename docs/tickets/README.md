@@ -10,6 +10,11 @@ Every ticket on the §8 ladder leaves three artefacts, all in the repo, none onl
 
 Rules:
 - A research finding that exists only in a chat does not exist. Commit it here before the ticket is written.
+- **A spec amendment is its own commit, never part of a build commit.** `PLINTH_SPEC.md` is the
+  planning side's file (§2.5); when a build turns up something the spec must record, land the
+  P-entry in a separate commit that touches nothing else, so the diff shows who changed the
+  document of record and why. (T-P4 review, item 2: the P-6 correction was committed inside the
+  T-P4 code commit.)
 - Findings are numbered `F1..Fn`; the ticket cites them by number; the PR's `TODO(spec)` list cites them by number.
 - The research session commits directly to `main` (docs only, no code) or pushes a branch — either is fine; the file is the deliverable.
 

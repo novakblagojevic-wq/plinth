@@ -253,6 +253,7 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   bound the guard holds that glare to at the screen centre), and the window intensity
   of `dark-glass` = 24, which is outside the 4–12 range the research proposed and is
   the value the critic loop settled on.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).

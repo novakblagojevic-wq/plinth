@@ -160,6 +160,7 @@ interface Materials {
  * tried first and rejected: additive blending into the sRGB-encoded composer
  * target (pipeline.ts) double-counts the reflection.
  */
+/** How much of the environment the screen's glass shows (§9 P-7). */
 export const SCREEN_GLARE_INTENSITY = 0.35;
 const CLEARCOAT_F0 = 0.04;
 

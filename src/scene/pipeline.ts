@@ -1,7 +1,7 @@
 import {
   SRGBColorSpace,
   type Texture,
-  UnsignedByteType,
+  HalfFloatType,
   WebGLRenderTarget,
   type Camera,
   type Scene,
@@ -24,7 +24,28 @@ import { CopyShader } from 'three/addons/shaders/CopyShader.js';
  * develop the screenshot twice. So the composer's targets carry that flag and
  * an sRGB texture colour space: every material is tone mapped and encoded as
  * it is drawn, `toneMapped = false` is honoured, SMAA runs on display-referred
- * pixels (what it is designed for), and the last pass is a plain copy.
+ * pixels (what it is designed for), and the last pass passes them through
+ * unconverted (none of the pass shaders include `colorspace_fragment`).
+ *
+ * The targets are HALF FLOAT, and that is load-bearing twice over — an
+ * 8-bit target is wrong here in two independent ways (both found by the T-P4
+ * review, items 1 and 4):
+ *
+ *   1. `isXRRenderTarget` forces the LINEAR internal format for the
+ *      multisample renderbuffer (`WebGLTextures.js:2120` passes it as
+ *      `forceLinearTransfer`) while the resolve texture is allocated without
+ *      that flag (`:1651`). With `UnsignedByteType` those are `RGBA8` and
+ *      `SRGB8_ALPHA8`, and a multisampled blit between mismatched formats is
+ *      `INVALID_OPERATION` in WebGL 2 — so `?msaa=1` drew nothing at all.
+ *   2. An `SRGB8_ALPHA8` attachment makes the GPU encode on write and decode
+ *      on read, on top of the encode the fragment shader already did, so the
+ *      value round-trips through the OETF twice at 8 bits and loses the top
+ *      highlight levels.
+ *
+ * `getInternalFormat` only picks the sRGB internal format for `UNSIGNED_BYTE`
+ * (`WebGLTextures.js:234`), so with `HalfFloatType` both the renderbuffer and
+ * the texture are `RGBA16F`: the blit formats match, there is no second
+ * encode, and the encoded values keep float precision through the chain.
  *
  * MSAA opt-in (§4.4.6) is `samples: 4` on that target with SMAA off — never
  * `antialias: true` on the context (vault dead-end on ANGLE-D3D11).
@@ -52,7 +73,7 @@ export function createPipeline(
   opts: { msaa: boolean },
 ): Pipeline {
   const target = new WebGLRenderTarget(1, 1, {
-    type: UnsignedByteType,
+    type: HalfFloatType,
     samples: opts.msaa ? 4 : 0,
     depthBuffer: true,
     stencilBuffer: false,

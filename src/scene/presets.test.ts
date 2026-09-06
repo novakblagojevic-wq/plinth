@@ -17,6 +17,7 @@ describe('§4.4.4 scene presets', () => {
     expect(p.exposure).toBeLessThan(2);
     expect(p.window.elevation).toBeGreaterThanOrEqual(10);
     expect(p.window.elevation).toBeLessThanOrEqual(60);
+    // 4–12 is the research's proposed range; 24 is dark-glass, recorded in §9 P-7.
     expect(p.window.intensity).toBeGreaterThanOrEqual(4);
     expect(p.window.intensity).toBeLessThanOrEqual(24);
     expect(p.shadow.opacity).toBeGreaterThan(0);
