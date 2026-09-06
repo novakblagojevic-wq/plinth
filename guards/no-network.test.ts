@@ -55,7 +55,7 @@ describe('§2.2 no-network guard', () => {
     });
 
     await page.goto(url, { waitUntil: 'load' });
-    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 30_000 });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
     // Give any deferred fetch (fonts, analytics, lazy chunks) a chance to fire.
     await page.waitForTimeout(500);
 

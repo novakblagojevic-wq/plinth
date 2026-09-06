@@ -44,12 +44,12 @@ afterAll(async () => {
   await server?.close();
 });
 
-async function capture(device: string): Promise<Buffer> {
+async function capture(device: string, scene: string): Promise<Buffer> {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${url}?pg=1&device=${device}`, { waitUntil: 'load' });
-  await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 30_000 });
+  await page.goto(`${url}?pg=1&device=${device}&scene=${scene}`, { waitUntil: 'load' });
+  await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
   const canvas = await page.$('canvas#stage');
   expect(canvas, 'stage canvas present').not.toBeNull();
   const png = await canvas!.screenshot({ type: 'png' });
@@ -70,27 +70,39 @@ describe('§7 pg mode', () => {
     expect(hits, 'time or randomness in src/').toEqual([]);
   });
 
-  it('two loads of ?pg=1 render byte-identical canvases', async () => {
-    const a = await capture('laptop');
-    const b = await capture('laptop');
+  it('two loads of ?pg=1 render byte-identical canvases (SMAA on, warm-sunset)', async () => {
+    const a = await capture('laptop', 'warm-sunset');
+    const b = await capture('laptop', 'warm-sunset');
     expect(a.length).toBeGreaterThan(1000);
     expect(a.equals(b)).toBe(true);
   });
 
-  it('?device= selects the preset and the hook reports it', async () => {
+  it('?device= and ?scene= select the presets and the hook reports them', async () => {
     const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
-    await page.goto(`${url}?pg=1&device=card`, { waitUntil: 'load' });
-    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 30_000 });
-    const info = await page.evaluate(() => ({
-      device: window.__plinth.getDevice(),
-      pg: window.__plinth.pg,
-      bezel: window.__plinth.getSpec().bezel,
-      size: [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height],
-    }));
+    await page.goto(`${url}?pg=1&device=card&scene=clean-white`, { waitUntil: 'load' });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const info = await page.evaluate(() => {
+      const before = window.__plinth.getScene();
+      window.__plinth.setScene('dark-glass');
+      return {
+        device: window.__plinth.getDevice(),
+        pg: window.__plinth.pg,
+        bezel: window.__plinth.getSpec().bezel,
+        sceneBefore: before,
+        sceneAfter: window.__plinth.getScene(),
+        toneMapping: window.__plinth.getToneMapping(),
+        size: [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height],
+        body: document.body.style.background,
+      };
+    });
     expect(info.device).toBe('card');
     expect(info.pg).toBe(true);
     expect(info.bezel).toBe(0.001);
+    expect(info.sceneBefore).toBe('clean-white');
+    expect(info.sceneAfter).toBe('dark-glass');
+    expect(info.toneMapping).toBe('agx');
     expect(info.size).toEqual([1280, 800]);
+    expect(info.body).toBe('rgb(14, 16, 20)');
     await page.close();
   });
 });

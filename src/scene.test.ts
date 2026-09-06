@@ -1,11 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { Box3, Frustum, Matrix4, Vector3 } from 'three';
+import { Box3, Color, Frustum, Matrix4, Vector3 } from 'three';
+import { SCENE_PRESETS } from './scene/presets';
 import { DEVICE_IDS } from './devices/presets';
 import { createStage, FRAME_FILL } from './scene';
 
 describe('T-P2 stage', () => {
   it('mounts the requested device and switches', () => {
-    const stage = createStage('tablet', 16 / 10);
+    const stage = createStage('tablet', 'soft-studio', 16 / 10);
     expect(stage.getDevice()).toBe('tablet');
     expect(stage.scene.getObjectByName('device')).toBeDefined();
     stage.setDevice('laptop');
@@ -14,8 +15,26 @@ describe('T-P2 stage', () => {
     expect(stage.scene.children.filter((c) => c.name === 'device')).toHaveLength(1);
   });
 
+  it('applies the scene preset to background and key light, and has no floor mesh', () => {
+    const stage = createStage('phone', 'soft-studio', 16 / 10);
+    stage.setScene('dark-glass');
+    expect(stage.getScene()).toBe('dark-glass');
+    expect((stage.scene.background as Color).getHexString()).toBe('0e1014');
+    expect(stage.key.intensity).toBe(SCENE_PRESETS['dark-glass'].key.intensity);
+    expect(stage.scene.getObjectByName('floor')).toBeUndefined();
+  });
+
+  it('notifies on device change so the contact shadow can re-capture', () => {
+    const stage = createStage('phone', 'soft-studio', 16 / 10);
+    let calls = 0;
+    stage.onDeviceChange(() => calls++);
+    stage.setDevice('card');
+    stage.setSpec({ ...stage.getSpec(), w: 0.31 });
+    expect(calls).toBe(2);
+  });
+
   it.each(DEVICE_IDS)('%s is fully inside the camera frustum at 1280×800', (id) => {
-    const stage = createStage(id, 1280 / 800);
+    const stage = createStage(id, 'soft-studio', 1280 / 800);
     const device = stage.scene.getObjectByName('device')!;
     stage.scene.updateMatrixWorld(true);
     stage.camera.updateMatrixWorld(true);
@@ -31,7 +50,7 @@ describe('T-P2 stage', () => {
   });
 
   it('fills roughly FRAME_FILL of the frame height', () => {
-    const stage = createStage('phone', 1280 / 800);
+    const stage = createStage('phone', 'soft-studio', 1280 / 800);
     const device = stage.scene.getObjectByName('device')!;
     const box = new Box3().setFromObject(device);
     const top = new Vector3((box.min.x + box.max.x) / 2, box.max.y, (box.min.z + box.max.z) / 2).project(stage.camera);

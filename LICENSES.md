@@ -12,6 +12,7 @@ except `three` — everything else is build and test tooling.
 | Package | Version | Licence | Role |
 |---|---|---|---|
 | `@types/node` | 22.20.1 | MIT | dev — type definitions for the guard scripts |
+| `@types/pngjs` | 6.0.5 | MIT | dev — type definitions for pngjs |
 | `@types/three` | 0.185.4 | MIT | dev — type definitions for three |
 | `lefthook` | 2.1.12 | MIT | dev — pre-commit typecheck (§3) |
 | `pixelmatch` | 7.2.0 | ISC | dev — PG baseline diff (§7) |

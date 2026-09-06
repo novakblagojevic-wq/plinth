@@ -1,35 +1,34 @@
-import {
-  AmbientLight,
-  Color,
-  DirectionalLight,
-  Mesh,
-  MeshStandardMaterial,
-  PerspectiveCamera,
-  PlaneGeometry,
-  Scene,
-  Vector3,
-} from 'three';
+import { Color, DirectionalLight, PerspectiveCamera, Scene, Vector3 } from 'three';
 import { buildDevice, type DeviceRig } from './devices/build';
 import { presetSpec, type DeviceId } from './devices/presets';
 import type { DeviceSpec } from './devices/spec';
+import { SCENE_PRESETS, type SceneId, type ScenePreset } from './scene/presets';
 
 /**
- * T-P2 stage: a floor, a key light and a fill, one parametric device standing
- * on the floor, and a fixed camera that frames any preset at roughly 60% of the
- * frame height. Flat lit — physical materials, environment and contact shadow
- * are T-P4 (§4.4); orbit and poses are T-P5 (§4.3).
+ * The stage: one parametric device, one key light, a fixed camera framing any
+ * preset at ~60% of frame height, and the scene-preset state (§4.4.4) that a
+ * renderer-bound `Studio` turns into an environment map, a contact shadow and
+ * exposure. Renderer-free so it builds under Node for the unit tests, and it
+ * reads no clock (§7).
  *
- * Renderer-free so it builds under Node for the unit tests. Nothing here reads
- * a clock: the stage is a pure function of (device id, spec, aspect).
+ * There is no floor mesh: the contact-shadow plane is the only floor visual
+ * and `scene.background` is the sweep (P-6, T-P4 research F5).
  */
 export interface Stage {
   scene: Scene;
   camera: PerspectiveCamera;
+  key: DirectionalLight;
   setDevice(id: DeviceId): void;
   getDevice(): DeviceId;
   getSpec(): DeviceSpec;
   setSpec(spec: DeviceSpec): void;
   setAspect(aspect: number): void;
+  setScene(id: SceneId): void;
+  getScene(): SceneId;
+  getPreset(): ScenePreset;
+  getRig(): DeviceRig;
+  /** Fires after the device rig is rebuilt or re-specced (the shadow re-captures). */
+  onDeviceChange(cb: () => void): void;
 }
 
 /** Fraction of the frame height the device's bounding box should fill. */
@@ -37,42 +36,34 @@ export const FRAME_FILL = 0.6;
 export const CAMERA_FOV = 32;
 const VIEW_DIR = new Vector3(0.28, 0.38, 1).normalize();
 
-export function createStage(initial: DeviceId, aspect: number): Stage {
+export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspect: number): Stage {
   const scene = new Scene();
-  scene.background = new Color(0x14161a);
-
   const camera = new PerspectiveCamera(CAMERA_FOV, aspect, 0.01, 50);
 
-  const floor = new Mesh(
-    new PlaneGeometry(40, 40),
-    new MeshStandardMaterial({ color: 0x2a2e35, metalness: 0, roughness: 0.9 }),
-  );
-  floor.name = 'floor';
-  floor.rotation.x = -Math.PI / 2;
-  scene.add(floor);
-
-  // T-P2-fix: no cast shadow. The hard shadow-map shadow from T-P1's
-  // placeholder read as a defect on the live URL; the grounding shadow is
-  // the §4.4 contact shadow, which T-P4 adds. Flat lit until then.
-  const key = new DirectionalLight(0xffffff, 3);
+  const key = new DirectionalLight(0xffffff, 1);
   key.name = 'key';
-  key.position.set(0.6, 1.2, 0.8);
-  key.castShadow = false;
   scene.add(key);
 
-  const fill = new AmbientLight(0xffffff, 0.45);
-  fill.name = 'fill';
-  scene.add(fill);
-
-  let id: DeviceId = initial;
+  let id: DeviceId = initialDevice;
+  let sceneId: SceneId = initialScene;
   let rig: DeviceRig = buildDevice(presetSpec(id), id === 'browser');
   scene.add(rig.group);
+  const listeners: Array<() => void> = [];
+  const changed = (): void => listeners.forEach((cb) => cb());
+
+  function applyPreset(): void {
+    const p = SCENE_PRESETS[sceneId];
+    scene.background = new Color(p.background);
+    key.color.setRGB(p.key.colour[0], p.key.colour[1], p.key.colour[2]);
+    key.intensity = p.key.intensity;
+    key.position.set(p.key.position[0], p.key.position[1], p.key.position[2]);
+  }
+  applyPreset();
 
   function frame(): void {
     const size = rig.bounds.getSize(new Vector3());
     const centre = rig.bounds.getCenter(new Vector3());
     const halfFov = (camera.fov * Math.PI) / 360;
-    // Fit the taller of height and width-at-this-aspect into FRAME_FILL of the frame.
     const fit = Math.max(size.y, size.x / camera.aspect, size.z / camera.aspect) / FRAME_FILL;
     const dist = fit / 2 / Math.tan(halfFov) + Math.max(size.z, size.x) / 2;
     camera.position.copy(centre).addScaledVector(VIEW_DIR, dist);
@@ -84,6 +75,7 @@ export function createStage(initial: DeviceId, aspect: number): Stage {
   return {
     scene,
     camera,
+    key,
     setDevice(next) {
       if (next === id) return;
       scene.remove(rig.group);
@@ -92,16 +84,28 @@ export function createStage(initial: DeviceId, aspect: number): Stage {
       rig = buildDevice(presetSpec(id), id === 'browser');
       scene.add(rig.group);
       frame();
+      changed();
     },
     getDevice: () => id,
     getSpec: () => ({ ...rig.spec }),
     setSpec(spec) {
       rig.update(spec);
       frame();
+      changed();
     },
     setAspect(a) {
       camera.aspect = a;
       frame();
+    },
+    setScene(next) {
+      sceneId = next;
+      applyPreset();
+    },
+    getScene: () => sceneId,
+    getPreset: () => SCENE_PRESETS[sceneId],
+    getRig: () => rig,
+    onDeviceChange(cb) {
+      listeners.push(cb);
     },
   };
 }

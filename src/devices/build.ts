@@ -1,14 +1,15 @@
 import {
   Box3,
-  BoxGeometry,
   CylinderGeometry,
   ExtrudeGeometry,
   Group,
   Mesh,
+  MeshPhysicalMaterial,
   MeshStandardMaterial,
   Path,
   PlaneGeometry,
   Shape,
+  ShapeGeometry,
   Vector3,
 } from 'three';
 import { screenRect, shapeHash, type DeviceSpec } from './spec';
@@ -86,6 +87,25 @@ function roundedRect(w: number, h: number, r: number, path: Shape | Path): void 
   path.closePath();
 }
 
+/**
+ * A flat rounded rectangle centred at the origin in the xy plane with 0..1 UVs,
+ * for the screen. Rounding the placeholder's corners here keeps them from
+ * poking past the slab's outline on thin-bezel presets (card: 1 mm bezel,
+ * 12 mm radius). §4.1's SDF mask (T-P3) anti-aliases the picture's edge on top
+ * of this; the geometry is not the mask.
+ */
+export function roundedPlaneGeometry(w: number, h: number, r: number): ShapeGeometry {
+  const shape = new Shape();
+  roundedRect(w, h, r, shape);
+  const g = new ShapeGeometry(shape, BUILDER_RATIOS.curveSegments);
+  const uv = g.attributes['uv']!;
+  for (let i = 0; i < uv.count; i++) {
+    uv.setXY(i, uv.getX(i) / w + 0.5, uv.getY(i) / h + 0.5);
+  }
+  uv.needsUpdate = true;
+  return g;
+}
+
 interface SlabOpts {
   w: number;
   h: number;
@@ -125,20 +145,54 @@ function edgeBevel(spec: DeviceSpec, depth: number): number {
 }
 
 interface Materials {
-  frame: MeshStandardMaterial;
-  screen: MeshStandardMaterial;
+  frame: MeshPhysicalMaterial;
+  screen: MeshPhysicalMaterial;
   bar: MeshStandardMaterial;
   dot: MeshStandardMaterial;
 }
 
+/**
+ * §4.4.1 (P-6, as corrected in T-P4): physical frame; the screen is ONE
+ * `MeshPhysicalMaterial` — black base, the picture as EMISSIVE (unlit, exact),
+ * the §4.4.1 glass as its clearcoat layer — and `toneMapped = false`, so the
+ * emissive picture reaches the canvas untouched and the glare sits on top of it
+ * in linear light inside the fragment. A separate additive glass plane was
+ * tried first and rejected: additive blending into the sRGB-encoded composer
+ * target (pipeline.ts) double-counts the reflection.
+ */
+/** How much of the environment the screen's glass shows (§9 P-7). */
+export const SCREEN_GLARE_INTENSITY = 0.35;
+const CLEARCOAT_F0 = 0.04;
+
+export function emissiveCompensation(clearcoat: number): number {
+  return 1 / (1 - clearcoat * CLEARCOAT_F0);
+}
+
 function makeMaterials(spec: DeviceSpec): Materials {
   return {
-    frame: new MeshStandardMaterial({
+    frame: new MeshPhysicalMaterial({
       color: 0xd9dde3,
       metalness: spec.frameMetalness,
       roughness: spec.frameRoughness,
     }),
-    screen: new MeshStandardMaterial({ color: 0x0f1115, metalness: 0, roughness: 0.55 }),
+    // T-P3 puts the screenshot on `emissiveMap`; until then a flat dark emissive.
+    screen: new MeshPhysicalMaterial({
+      color: 0x000000,
+      emissive: 0x0f1115,
+      metalness: 0,
+      roughness: 1,
+      clearcoat: spec.glassClearcoat,
+      clearcoatRoughness: 0.08,
+      // The base layer must not reflect: a dielectric's 4% specular would tint the
+      // picture with the sky. Only the clearcoat reflects.
+      specularIntensity: 0,
+      envMapIntensity: SCREEN_GLARE_INTENSITY,
+      // three attenuates the base by (1 − clearcoat·F) under the coat; compensate at
+      // normal incidence so the picture's centre is exact, grazing angles keep the
+      // physical darkening.
+      emissiveIntensity: emissiveCompensation(spec.glassClearcoat),
+      toneMapped: false,
+    }),
     bar: new MeshStandardMaterial({ color: 0xeceff3, metalness: 0, roughness: 0.8 }),
     dot: new MeshStandardMaterial({ color: 0xb4bac2, metalness: 0, roughness: 0.8 }),
   };
@@ -170,17 +224,20 @@ function buildSlab(
 
   const recess = spec.depth - spec.screenInset;
   const plateDepth = recess - 2 * BUILDER_RATIOS.gap;
-  // Covers the opening at the back cap (open + 2·bevel) and never exceeds the walls.
+  // Covers the opening at the back cap (open + 2·bevel), rounded like the opening so
+  // its corners never poke past the slab's own rounded outline on thin bezels (card).
   const backplate = new Mesh(
-    new BoxGeometry(
-      Math.min(open.w + 2 * bevel, spec.w - 2 * bevel),
-      Math.min(open.h + 2 * bevel, spec.h - 2 * bevel),
-      plateDepth,
-    ),
+    slabGeometry({
+      w: open.w + 2 * bevel,
+      h: open.h + 2 * bevel,
+      depth: plateDepth,
+      radius: open.radius + bevel,
+      bevel: 0,
+    }),
     mats.frame,
   );
   backplate.name = 'backplate';
-  backplate.position.z = BUILDER_RATIOS.gap + plateDepth / 2;
+  backplate.position.z = BUILDER_RATIOS.gap;
   parent.add(backplate);
 
   let screenW = open.w;
@@ -206,7 +263,11 @@ function buildSlab(
     }
   }
 
-  const screen = new Mesh(new PlaneGeometry(screenW, screenH), mats.screen);
+  // Corner radii: concentric with the opening; browser's top corners are square (they meet the bar).
+  const screen = new Mesh(
+    browser ? new PlaneGeometry(screenW, screenH) : roundedPlaneGeometry(screenW, screenH, open.radius),
+    mats.screen,
+  );
   screen.name = 'screen';
   screen.position.set(0, screenY, recess);
   parent.add(screen);
@@ -298,6 +359,8 @@ export function buildDevice(initial: DeviceSpec, browser = false): DeviceRig {
       spec = { ...next };
       mats.frame.metalness = spec.frameMetalness;
       mats.frame.roughness = spec.frameRoughness;
+      mats.screen.clearcoat = spec.glassClearcoat;
+      mats.screen.emissiveIntensity = emissiveCompensation(spec.glassClearcoat);
       const h = shapeHash(spec);
       if (h !== hash) {
         disposeGeometries(group);
