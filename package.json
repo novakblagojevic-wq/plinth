@@ -14,13 +14,15 @@
     "test": "vitest run --project unit",
     "licenses": "node scripts/licenses.mjs",
     "ci": "npm run guards && npm run typecheck && npm run test",
-    "pg:capture": "node scripts/pg-capture.mjs"
+    "pg:capture": "node scripts/pg-capture.mjs",
+    "pg:sheet": "node scripts/contact-sheet.mjs"
   },
   "dependencies": {
     "three": "0.185.1"
   },
   "devDependencies": {
     "@types/node": "22.20.1",
+    "@types/pngjs": "6.0.5",
     "@types/three": "0.185.4",
     "lefthook": "2.1.12",
     "pixelmatch": "7.2.0",

@@ -21,6 +21,7 @@ const ROLE = {
   lefthook: 'dev — pre-commit typecheck (§3)',
   pixelmatch: 'dev — PG baseline diff (§7)',
   pngjs: 'dev — PNG decode for the PG diff (§7)',
+  '@types/pngjs': 'dev — type definitions for pngjs',
 };
 
 function licenseOf(name, entry) {

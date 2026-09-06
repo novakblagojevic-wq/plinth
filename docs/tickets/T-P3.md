@@ -108,11 +108,16 @@ candidates in the artifact; one PR.
 2. **`src/screen/fit.ts`** — pure functions: `fitTransform(image, screen, mode, pad)`
    → `{ uvScale, uvOffset, padUv }` for `contain` and `cover` plus the F2 pad
    definition. Tests cover both modes, both aspect orders, pad 0 and 0.25.
-3. **`src/screen/material.ts`** — `ScreenMaterial extends ShaderMaterial`,
-   `toneMapped: false`, uniforms: `map` (sRGB), `uvScale`, `uvOffset`, `padColor`,
-   `screenSize` (metres), `radii` (vec4, per corner, metres), `pad`. Fragment: rounded-
-   box SDF in screen metres, `fwidth`-based edge AA, `discard` outside; inside, sample
-   the image where the fitted UV is in [0,1], else `padColor`. No time uniform.
+3. **`src/screen/material.ts`** — *(updated after T-P4)* the screen is already a
+   `MeshPhysicalMaterial` with the picture as emissive and the glass as clearcoat
+   (P-6 corrected, `src/devices/build.ts:makeMaterials`). Keep that material; patch it
+   with `onBeforeCompile`: `emissiveMap` = the sRGB screenshot, uniforms `uvScale`,
+   `uvOffset`, `padColor`, `screenSize` (metres), `radii` (vec4, per corner, metres),
+   `pad`; in the fragment, rounded-box SDF in screen metres with `fwidth` edge AA,
+   `discard` outside, the picture where the fitted UV is in [0,1], else `padColor`.
+   The screen geometry is already a rounded plane with 0..1 UVs
+   (`roundedPlaneGeometry`); the SDF anti-aliases the picture's edge, it does not
+   replace the geometry. No time uniform, no `Math.random`.
 4. **`src/devices/build.ts`** — the screen mesh uses `ScreenMaterial`; radii come from
    `screenRect(spec).radius` for all four corners, except `browser`: top two = 0.
    Expose `rig.setImage(texture, imageSize)` and keep the applied image across

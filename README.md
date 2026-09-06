@@ -23,12 +23,23 @@ npm run ci         # what CI runs: guards → typecheck → unit tests
 
 The guards (`guards/`) need a Playwright Chromium: `npx playwright install chromium`.
 
+## Scene presets
+
+Four looks (PLINTH_SPEC §4.4): `soft-studio`, `dark-glass`, `warm-sunset`,
+`clean-white`, selected with `?scene=<id>`. Each is a procedural environment
+(a gradient sky and one soft window, pre-filtered at load — no HDR files), one key
+light, a contact shadow under the device and an exposure, tone mapped with AgX
+(ACES selectable through the hook). The screenshot on the screen is exempt from
+tone mapping, on purpose: it is already a finished picture. Anti-aliasing is an
+SMAA pass; `?msaa=1` swaps it for 4× MSAA on the render target.
+
 ## PG baselines
 
 `?pg=1` puts the stage in deterministic mode (PLINTH_SPEC §7): pixel ratio 1,
 a fixed 1280×800 canvas, fixed camera, no motion, no clock. `?device=<id>` picks
 the preset (`phone`, `tablet`, `laptop`, `browser`, `card`). `npm run pg:capture`
-renders every device that way and writes candidates to `pg-out/`; the
+renders every device × scene preset that way and writes candidates to `pg-out/`
+(`npm run pg:sheet` tiles them into one contact sheet); the
 `pg-capture` workflow does the same on CI and uploads them as the `pg-candidates`
 artifact. Candidates always come from the CI render (SwiftShader is the reference
 GPU), never from a local machine. A baseline in `fixtures/pg/` is a hard diff gate

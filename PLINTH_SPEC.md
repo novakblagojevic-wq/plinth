@@ -227,10 +227,12 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
 - P-6 — §4.4 decisions from the T-P4 research pass (2026-09-05,
   `docs/tickets/T-P4-research.md`): (1) on-screen anti-aliasing is an SMAA pass by
   default; the §4.4 MSAA opt-in lives on the composer's render target (`samples: 4`),
-  never on the WebGL context, and is ignored in `?pg=1` (F6, F7). (2) The glass is a
-  second additive `MeshPhysicalMaterial` plane over the screen; the screen itself is
-  unlit and exempt from tone mapping, and must stay exempt through the composer (F2,
-  F3). (3) The contact-shadow plane is the only floor visual; `scene.background` is
+  never on the WebGL context, and is ignored in `?pg=1` (F6, F7). (2) The screen is one
+  `MeshPhysicalMaterial`: black base, the picture as emissive, the §4.4.1 glass as its
+  clearcoat layer, `toneMapped = false`, and it must stay exempt through the composer
+  (F2, F3). *Corrected during T-P4:* the research proposed a second additive glass
+  plane; additive blending into the sRGB-encoded composer target double-counts the
+  reflection, so glass and picture are one material. (3) The contact-shadow plane is the only floor visual; `scene.background` is
   the sweep (F5). (4) The F8 preset table is the recorded starting point for the T-P4
   critic loop; final values are reported in the PR.
 
