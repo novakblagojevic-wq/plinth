@@ -224,6 +224,15 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   every ticket as `docs/tickets/T-Pn.md`, every review verdict as a GitHub review on the
   PR. A finding or verdict that exists only in a chat does not exist. Conventions in
   `docs/tickets/README.md`.
+- P-6 — §4.4 decisions from the T-P4 research pass (2026-09-05,
+  `docs/tickets/T-P4-research.md`): (1) on-screen anti-aliasing is an SMAA pass by
+  default; the §4.4 MSAA opt-in lives on the composer's render target (`samples: 4`),
+  never on the WebGL context, and is ignored in `?pg=1` (F6, F7). (2) The glass is a
+  second additive `MeshPhysicalMaterial` plane over the screen; the screen itself is
+  unlit and exempt from tone mapping, and must stay exempt through the composer (F2,
+  F3). (3) The contact-shadow plane is the only floor visual; `scene.background` is
+  the sweep (F5). (4) The F8 preset table is the recorded starting point for the T-P4
+  critic loop; final values are reported in the PR.
 
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
