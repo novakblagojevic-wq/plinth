@@ -3,6 +3,8 @@ import {
   CylinderGeometry,
   ExtrudeGeometry,
   Group,
+  InstancedMesh,
+  Matrix4,
   Mesh,
   MeshPhysicalMaterial,
   MeshStandardMaterial,
@@ -50,6 +52,24 @@ export const BUILDER_RATIOS = {
   /** Hinge base plate: z-extent × h, thickness × depth. */
   baseDepth: 0.95,
   baseThickness: 2.0,
+  /**
+   * The hinge base's deck (§9 P-8). §4.2 says only "base plate", but a bare
+   * plate does not read as a laptop, so the base carries a generic key grid and
+   * a trackpad — plain rounded caps in a recessed well, no glyphs, no legends,
+   * no layout that belongs to anyone (§2.1). All fractions of the base.
+   */
+  deckInsetX: 0.09,
+  keyboardFront: 0.60,
+  keyboardBack: 0.06,
+  keyCols: 14,
+  keyRows: 5,
+  keyGap: 0.14,
+  keyHeight: 0.22,
+  /** How far the key caps stand off the plate, × base thickness. */
+  wellDepth: 0.10,
+  trackpadWidth: 0.30,
+  trackpadFront: 0.10,
+  trackpadDepth: 0.24,
   /** Stand plate: z-extent × h, thickness × depth. */
   plateDepth: 0.5,
   plateThickness: 1.0,
@@ -146,6 +166,8 @@ function edgeBevel(spec: DeviceSpec, depth: number): number {
 
 interface Materials {
   frame: MeshPhysicalMaterial;
+  key: MeshPhysicalMaterial;
+  well: MeshPhysicalMaterial;
   screen: MeshPhysicalMaterial;
   bar: MeshStandardMaterial;
   dot: MeshStandardMaterial;
@@ -192,6 +214,19 @@ function makeMaterials(spec: DeviceSpec): Materials {
       // physical darkening.
       emissiveIntensity: emissiveCompensation(spec.glassClearcoat),
       toneMapped: false,
+    }),
+    // Deck: keys a touch darker than the frame, the well darker still, both
+    // duller — a keyboard that catches the same highlight as the shell reads as
+    // embossed metal rather than as keys.
+    key: new MeshPhysicalMaterial({
+      color: 0xb9bec6,
+      metalness: spec.frameMetalness * 0.5,
+      roughness: Math.min(spec.frameRoughness + 0.25, 1),
+    }),
+    well: new MeshPhysicalMaterial({
+      color: 0x8f959d,
+      metalness: 0,
+      roughness: 0.85,
     }),
     bar: new MeshStandardMaterial({ color: 0xeceff3, metalness: 0, roughness: 0.8 }),
     dot: new MeshStandardMaterial({ color: 0xb4bac2, metalness: 0, roughness: 0.8 }),
@@ -275,6 +310,85 @@ function buildSlab(
   return { frame, screen, screenSize: { w: screenW, h: screenH } };
 }
 
+/**
+ * The laptop deck (§9 P-8): a recessed well with a grid of plain key caps and a
+ * trackpad, laid on top of the base plate. One `InstancedMesh` for every key, so
+ * the whole keyboard is a single draw call.
+ *
+ * `baseW` × `baseD` is the plate's footprint; the plate's top face is at
+ * `y = baseT` in the parent's frame, with the hinge at `z = 0` and the front
+ * edge at `z = baseD`.
+ */
+function buildDeck(
+  parent: Group,
+  mats: Materials,
+  baseW: number,
+  baseD: number,
+  baseT: number,
+): void {
+  const R = BUILDER_RATIOS;
+  const gap = R.gap;
+  const insetX = R.deckInsetX * baseW;
+  const deckW = baseW - 2 * insetX;
+
+  // Keyboard well: a darker panel laid ON the plate, between the hinge and the
+  // trackpad. It sits above the top face rather than sunk into it — the plate is
+  // one extrusion with no hole, so anything below `baseT` is simply inside it.
+  const wellZ0 = R.keyboardBack * baseD;
+  const wellZ1 = R.keyboardFront * baseD;
+  const wellD = wellZ1 - wellZ0;
+  const wellRise = R.wellDepth * baseT;
+  const well = new Mesh(roundedPlaneGeometry(deckW, wellD, wellD * 0.04), mats.well);
+  well.name = 'keyboard-well';
+  well.rotation.x = -Math.PI / 2;
+  well.position.set(0, baseT + gap, wellZ0 + wellD / 2);
+  parent.add(well);
+
+  // Key caps: a plain grid, no glyphs (§2.1). Sized to fill the well with gaps.
+  const gapX = (R.keyGap * deckW) / R.keyCols;
+  const gapZ = (R.keyGap * wellD) / R.keyRows;
+  const keyW = (deckW - gapX * (R.keyCols + 1)) / R.keyCols;
+  const keyD = (wellD - gapZ * (R.keyRows + 1)) / R.keyRows;
+  const keyH = R.keyHeight * baseT;
+  const keys = new InstancedMesh(
+    slabGeometry({
+      w: keyW,
+      h: keyD,
+      depth: keyH,
+      radius: Math.min(keyW, keyD) * 0.16,
+      bevel: keyH * 0.3,
+    }),
+    mats.key,
+    R.keyCols * R.keyRows,
+  );
+  keys.name = 'keys';
+  const m = new Matrix4();
+  let i = 0;
+  for (let row = 0; row < R.keyRows; row++) {
+    for (let col = 0; col < R.keyCols; col++) {
+      m.makeRotationX(-Math.PI / 2);
+      m.setPosition(
+        -deckW / 2 + gapX + keyW / 2 + col * (keyW + gapX),
+        baseT + wellRise,
+        wellZ0 + gapZ + keyD / 2 + row * (keyD + gapZ),
+      );
+      keys.setMatrixAt(i++, m);
+    }
+  }
+  keys.instanceMatrix.needsUpdate = true;
+  parent.add(keys);
+
+  // Trackpad: a shallow inset rectangle in front of the keyboard.
+  const padW = R.trackpadWidth * baseW;
+  const padD = R.trackpadDepth * baseD;
+  const padZ = baseD - R.trackpadFront * baseD - padD / 2;
+  const pad = new Mesh(roundedPlaneGeometry(padW, padD, padD * 0.06), mats.well);
+  pad.name = 'trackpad';
+  pad.rotation.x = -Math.PI / 2;
+  pad.position.set(0, baseT + gap, padZ);
+  parent.add(pad);
+}
+
 function buildInto(root: Group, spec: DeviceSpec, mats: Materials, browser: boolean) {
   root.clear();
   const slab = new Group();
@@ -301,6 +415,7 @@ function buildInto(root: Group, spec: DeviceSpec, mats: Materials, browser: bool
     base.rotation.x = -Math.PI / 2;
     base.position.z = baseD / 2;
     root.add(base);
+    buildDeck(root, mats, spec.w, baseD, baseT);
 
     const hinge = new Group();
     hinge.name = 'hinge';
