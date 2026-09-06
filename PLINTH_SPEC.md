@@ -254,6 +254,15 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   of `dark-glass` = 24, which is outside the 4–12 range the research proposed and is
   the value the critic loop settled on.
 
+- P-8 — Laptop deck (2026-09-06): §4.2 describes the `laptop` as a screen slab hinged to a
+  base plate, and a bare plate does not read as a laptop. The base carries a **generic key
+  grid and a trackpad**: 14 × 5 plain rounded caps in one `InstancedMesh` (one draw call) on
+  a darker panel, plus a rounded trackpad rectangle. No glyphs, no legends, no key layout,
+  no proportions taken from any manufacturer's machine (§2.1) — the caps are a uniform grid,
+  which no real keyboard is. Proportions are fractions of the base plate, in
+  `BUILDER_RATIOS`. This is device geometry, so it belongs to §4.2 rather than §4.4; it
+  landed during T-P4 because the missing keyboard was found on the T-P4 contact sheet and
+  no baseline had been blessed yet, which made it free to change.
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
