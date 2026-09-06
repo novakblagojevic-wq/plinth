@@ -50,33 +50,55 @@ afterAll(async () => {
 
 type Rgb = [number, number, number];
 
-/** Loads a stage, paints the screen a flat colour, returns the canvas pixel at its centre. */
-async function screenPixel(
-  scene: string,
-  toneMapping: 'agx' | 'aces',
-  glass: boolean,
-  opts: { query?: string; colour?: string } = {},
-): Promise<Rgb> {
+interface SampleOpts {
+  toneMapping?: 'agx' | 'aces';
+  glass?: boolean;
+  colour?: string;
+}
+
+/**
+ * Opens ONE stage page and returns a sampler that repaints the screen and reads
+ * the canvas pixel at its centre. Reusing the page matters: a load costs ~19 s on
+ * a CI runner under SwiftShader, so a per-colour load blows the 120 s test
+ * timeout even though it passes on a fast machine.
+ */
+async function openSampler(scene: string, query = 'pg=1') {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   const errors: string[] = [];
   page.on('pageerror', (e) => errors.push(String(e)));
-  await page.goto(`${url}?${opts.query ?? 'pg=1'}&device=tablet&scene=${scene}`, { waitUntil: 'load' });
+  await page.goto(`${url}?${query}&device=tablet&scene=${scene}`, { waitUntil: 'load' });
   await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
-  const centre = await page.evaluate(
-    ({ tm, g, c }) => {
-      window.__plinth.setToneMapping(tm);
-      if (!g) window.__plinth.setSpec({ ...window.__plinth.getSpec(), glassClearcoat: 0 });
-      window.__plinth.setScreenColor(c);
-      return window.__plinth.screenCentrePx();
-    },
-    { tm: toneMapping, g: glass, c: opts.colour ?? '#808080' },
-  );
   const canvas = await page.$('canvas#stage');
-  const png = PNG.sync.read(await canvas!.screenshot({ type: 'png' }));
-  expect(errors, 'page errors').toEqual([]);
-  await page.close();
-  const i = (centre.y * png.width + centre.x) * 4;
-  return [png.data[i]!, png.data[i + 1]!, png.data[i + 2]!];
+  expect(canvas, 'stage canvas present').not.toBeNull();
+
+  return {
+    async sample(opts: SampleOpts = {}): Promise<Rgb> {
+      const centre = await page.evaluate(
+        ({ tm, g, c }) => {
+          window.__plinth.setToneMapping(tm);
+          if (!g) window.__plinth.setSpec({ ...window.__plinth.getSpec(), glassClearcoat: 0 });
+          window.__plinth.setScreenColor(c);
+          return window.__plinth.screenCentrePx();
+        },
+        { tm: opts.toneMapping ?? 'agx', g: opts.glass ?? false, c: opts.colour ?? '#808080' },
+      );
+      const png = PNG.sync.read(await canvas!.screenshot({ type: 'png' }));
+      const i = (centre.y * png.width + centre.x) * 4;
+      return [png.data[i]!, png.data[i + 1]!, png.data[i + 2]!];
+    },
+    async close(): Promise<void> {
+      expect(errors, 'page errors').toEqual([]);
+      await page.close();
+    },
+  };
+}
+
+/** One-shot form for the cases that only need a single pixel. */
+async function screenPixel(scene: string, opts: SampleOpts & { query?: string } = {}): Promise<Rgb> {
+  const sampler = await openSampler(scene, opts.query);
+  const rgb = await sampler.sample(opts);
+  await sampler.close();
+  return rgb;
 }
 
 /** Glare bound: with the glass on, the screen centre may brighten by at most this much (8-bit, §9 P-7). */
@@ -84,17 +106,17 @@ const GLARE_MAX = 24;
 
 describe('§4.4.5 screen exempt from tone mapping', () => {
   it.each(SCENES)('%s under AgX leaves #808080 at #808080 (glass off)', async (scene) => {
-    const [r, g, b] = await screenPixel(scene, 'agx', false);
+    const [r, g, b] = await screenPixel(scene);
     for (const v of [r, g, b]) expect(Math.abs(v - GREY), `${scene} agx rgb(${r},${g},${b})`).toBeLessThanOrEqual(TOLERANCE);
   });
 
   it('warm-sunset under ACES leaves #808080 at #808080 (glass off)', async () => {
-    const [r, g, b] = await screenPixel('warm-sunset', 'aces', false);
+    const [r, g, b] = await screenPixel('warm-sunset', { toneMapping: 'aces' });
     for (const v of [r, g, b]) expect(Math.abs(v - GREY), `aces rgb(${r},${g},${b})`).toBeLessThanOrEqual(TOLERANCE);
   });
 
   it.each(SCENES)('%s glass glare at the screen centre stays subtle', async (scene) => {
-    const [r, g, b] = await screenPixel(scene, 'agx', true);
+    const [r, g, b] = await screenPixel(scene, { glass: true });
     for (const v of [r, g, b]) {
       expect(v - GREY, `${scene} glare rgb(${r},${g},${b})`).toBeGreaterThanOrEqual(-TOLERANCE);
       expect(v - GREY, `${scene} glare rgb(${r},${g},${b})`).toBeLessThanOrEqual(GLARE_MAX);
@@ -103,17 +125,19 @@ describe('§4.4.5 screen exempt from tone mapping', () => {
 
   it('every level survives the chain exactly, highlights included', async () => {
     // The levels an 8-bit sRGB target got wrong, plus the ends of the range.
+    const sampler = await openSampler('soft-studio');
     for (const v of [0, 128, 232, 240, 252, 254, 255]) {
       const hex = `#${v.toString(16).padStart(2, '0').repeat(3)}`;
-      const [r, g, b] = await screenPixel('soft-studio', 'agx', false, { colour: hex });
+      const [r, g, b] = await sampler.sample({ colour: hex });
       expect([r, g, b], `${hex} came back rgb(${r},${g},${b})`).toEqual([v, v, v]);
     }
+    await sampler.close();
   });
 
   it('§4.4.6 ?msaa=1 draws the device, not just the background', async () => {
     // The 8-bit sRGB target made the multisample blit illegal and the frame came
     // back empty; the screen centre was the preset's background colour.
-    const [r, g, b] = await screenPixel('soft-studio', 'agx', false, { query: 'msaa=1' });
+    const [r, g, b] = await screenPixel('soft-studio', { query: 'msaa=1' });
     for (const v of [r, g, b]) {
       expect(Math.abs(v - GREY), `msaa screen centre rgb(${r},${g},${b})`).toBeLessThanOrEqual(TOLERANCE);
     }
