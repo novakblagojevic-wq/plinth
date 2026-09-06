@@ -263,6 +263,7 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   `BUILDER_RATIOS`. This is device geometry, so it belongs to §4.2 rather than §4.4; it
   landed during T-P4 because the missing keyboard was found on the T-P4 contact sheet and
   no baseline had been blessed yet, which made it free to change.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
