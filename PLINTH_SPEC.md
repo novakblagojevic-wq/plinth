@@ -264,6 +264,25 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   landed during T-P4 because the missing keyboard was found on the T-P4 contact sheet and
   no baseline had been blessed yet, which made it free to change.
 
+- P-9 — §4.1 input semantics (2026-09-08, `docs/tickets/T-P3-research-2.md`; authored
+  by GPT-6 Astra, landed as its own commit per P-5): (1) `pad ∈ [0, 0.25]` is a
+  fraction of the shorter screen side, applied as an equal margin on all four sides;
+  the margin uses `padColor`, default `#ffffff`, and both are state fields T-P9
+  serialises into the URL hash (§4.8). This is a spec fact because it fixes the
+  meaning of the visible margin and shared state across tickets. (F10; T-P3 v1 F2.)
+  (2) The texture cap is `cap = min(8192, renderer.capabilities.maxTextureSize)`;
+  images whose long side exceeds `cap` are downscaled client-side to that cap, and
+  the visible note names the cap that applied (§4.1.1). This is a spec fact because
+  it defines the image-size limit and user-visible behaviour on each device. (F10;
+  T-P3 v1 F5.) (3) EXIF orientation is applied at decode through `createImageBitmap`
+  with `imageOrientation: 'from-image'`; no manual rotation UI in v1. This is a spec
+  fact because it defines the orientation of imported images and the boundary of the
+  v1 controls. (F10; T-P3 v1 F8.) (4) The demo is `public/demo.png`, Novak's own
+  image (§3), committed in a standalone human commit before T-P3 v2 opens; the empty
+  state mounts it before the first frame (§4.1.3). This is a spec fact because it
+  fixes the required asset's provenance and availability and the first-frame
+  promise. (F6, F8; T-P3 v1 F6.)
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
