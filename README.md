@@ -11,7 +11,8 @@
 
 3D mockup studio in the browser. Devices are parametric generic slabs, never a
 replica of any manufacturer's design. Nothing leaves the tab: no network at
-runtime, no backend, no accounts. Document of record: [`PLINTH_SPEC.md`](PLINTH_SPEC.md).
+runtime, no backend, no accounts. Document of record: [`PLINTH_SPEC.md`](PLINTH_SPEC.md). Any agent, any model,
+starts at [`AGENTS.md`](AGENTS.md); the brief is [`docs/HANDOFF.md`](docs/HANDOFF.md).
 
 ## Develop
 

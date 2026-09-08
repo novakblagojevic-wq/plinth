@@ -1,0 +1,23 @@
+# Environment for the Copilot coding agent, so `npm run ci` works inside its
+# session exactly as it does in ci.yml (PLINTH_SPEC §3). Mirrors ci.yml's
+# setup steps, Playwright Chromium included (the no-network guard needs it);
+# runs no gate itself.
+name: "Copilot Setup Steps"
+on:
+  workflow_dispatch:
+  push:
+    paths: [".github/workflows/copilot-setup-steps.yml"]
+  pull_request:
+    paths: [".github/workflows/copilot-setup-steps.yml"]
+jobs:
+  copilot-setup-steps:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+    steps:
+      - uses: actions/checkout@v4
+        with: { fetch-depth: 0 }
+      - uses: actions/setup-node@v4
+        with: { node-version: 22, cache: npm }
+      - run: npm ci --no-audit --no-fund
+      - run: npx playwright install --with-deps chromium
