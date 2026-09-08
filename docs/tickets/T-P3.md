@@ -1,5 +1,9 @@
 # T-P3 — Screenshot to screen
 
+> Superseded in part by `docs/tickets/T-P3-research-2.md` (2026-09-08): the
+> research below was written against `152f670`, before T-P4; the ticket is to be
+> rewritten from the v2 pass.
+
 Document of record: `PLINTH_SPEC.md`. Read it fully first. You do not edit it;
 gaps go as `TODO(spec)` in the PR description and you stop on anything that
 blocks. Cites: §4.1 (primary); §2.2, §2.3, §3, §4.2, §7 (touched).
