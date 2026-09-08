@@ -137,6 +137,18 @@ contact sheet reads right); the product name (§10); the submission itself.
   `main`. It cannot run `npm run ci`, fetch, commit or push, so what it
   drafts re-enters through a repo session. Opening instruction: read
   `AGENTS.md`, then `PLINTH_SPEC.md`, then this file, then the ticket.
+- **ChatGPT agent mode (sandbox):** read and plan only. It cannot fetch
+  Playwright's Chromium (verified 2026-09-08: `cdn.playwright.dev` times
+  out), so the three browser guards cannot run and `npm run ci` is red on
+  an untouched base. Never a build surface for this repo.
+- **Codex cloud (OpenAI):** a build surface once its environment is set
+  up. It reads `AGENTS.md` natively. Environment: Node 22; setup script
+  `npm ci && npx playwright install --with-deps chromium` with internet
+  on during setup; agent-phase internet may stay off (nothing in
+  `npm run ci` needs it). **Acceptance of the environment itself:** a
+  first task that runs `npm run ci` on `main` and reports it green; no
+  ticket opens before that. It opens PRs; the fresh-context review is
+  still a separate session posted as a GitHub review.
 - **Claude Code:** the `.claude/hooks/protect-files.py` hook refuses edits
   to the spec and fixtures at edit time; everything else is the same.
 
