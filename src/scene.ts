@@ -1,8 +1,9 @@
-import { Color, DirectionalLight, PerspectiveCamera, Scene, Vector3 } from 'three';
+import { Color, DirectionalLight, PerspectiveCamera, Scene, SRGBColorSpace, Texture, Vector3 } from 'three';
 import { buildDevice, type DeviceRig } from './devices/build';
 import { presetSpec, type DeviceId } from './devices/presets';
 import type { DeviceSpec } from './devices/spec';
 import { SCENE_PRESETS, type SceneId, type ScenePreset } from './scene/presets';
+import type { FitMode, ImageMeta, ImageState } from './screen/types';
 
 /**
  * The stage: one parametric device, one key light, a fixed camera framing any
@@ -27,6 +28,11 @@ export interface Stage {
   getScene(): SceneId;
   getPreset(): ScenePreset;
   getRig(): DeviceRig;
+  setImage(bitmap: ImageBitmap, meta: ImageMeta): void;
+  setFit(mode: FitMode): void;
+  setPad(value: number): void;
+  setPadColor(hex: string): void;
+  getImage(): ImageState | null;
   /** Fires after the device rig is rebuilt or re-specced (the shadow re-captures). */
   onDeviceChange(cb: () => void): void;
 }
@@ -35,6 +41,9 @@ export interface Stage {
 export const FRAME_FILL = 0.6;
 export const CAMERA_FOV = 32;
 const VIEW_DIR = new Vector3(0.28, 0.38, 1).normalize();
+// A lower viewpoint and longer lens keep wide upright screens from keystoning.
+const WIDE_SCREEN_VIEW_DIR = new Vector3(0.2, 0.16, 1).normalize();
+const WIDE_SCREEN_FOV = 24;
 
 export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspect: number): Stage {
   const scene = new Scene();
@@ -50,6 +59,14 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   scene.add(rig.group);
   const listeners: Array<() => void> = [];
   const changed = (): void => listeners.forEach((cb) => cb());
+  let image: { bitmap: ImageBitmap; texture: Texture; meta: ImageMeta } | null = null;
+  let fit: FitMode = 'contain';
+  let pad = 0;
+  let padColor = '#ffffff';
+  function bindImage(): void {
+    if (image) rig.setImage(image.texture, { w: image.meta.width, h: image.meta.height });
+    rig.setImageFit(fit, pad, padColor);
+  }
 
   function applyPreset(): void {
     const p = SCENE_PRESETS[sceneId];
@@ -63,10 +80,14 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   function frame(): void {
     const size = rig.bounds.getSize(new Vector3());
     const centre = rig.bounds.getCenter(new Vector3());
-    const halfFov = (camera.fov * Math.PI) / 360;
+    const wideScreen = id === 'tablet' || id === 'browser' || id === 'card';
+    camera.fov = wideScreen ? WIDE_SCREEN_FOV : CAMERA_FOV;
+    const halfFov = (CAMERA_FOV * Math.PI) / 360;
     const fit = Math.max(size.y, size.x / camera.aspect, size.z / camera.aspect) / FRAME_FILL;
     const dist = fit / 2 / Math.tan(halfFov) + Math.max(size.z, size.x) / 2;
-    camera.position.copy(centre).addScaledVector(VIEW_DIR, dist);
+    // Move back with the longer lens to retain the existing framing scale.
+    const lensScale = Math.tan(halfFov) / Math.tan((camera.fov * Math.PI) / 360);
+    camera.position.copy(centre).addScaledVector(wideScreen ? WIDE_SCREEN_VIEW_DIR : VIEW_DIR, dist * lensScale);
     camera.lookAt(centre);
     camera.updateProjectionMatrix();
   }
@@ -82,6 +103,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
       rig.dispose();
       id = next;
       rig = buildDevice(presetSpec(id), id === 'browser');
+      bindImage();
       scene.add(rig.group);
       frame();
       changed();
@@ -104,6 +126,38 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
     getScene: () => sceneId,
     getPreset: () => SCENE_PRESETS[sceneId],
     getRig: () => rig,
+    setImage(bitmap, meta) {
+      if (image?.bitmap === bitmap) {
+        image.meta = { ...meta };
+        bindImage();
+        return;
+      }
+      const previous = image;
+      const texture = new Texture(bitmap);
+      texture.colorSpace = SRGBColorSpace;
+      texture.flipY = false;
+      texture.needsUpdate = true;
+      image = { bitmap, texture, meta: { ...meta } };
+      bindImage();
+      previous?.texture.dispose();
+      previous?.bitmap.close();
+    },
+    setFit(mode) {
+      if (mode !== 'contain' && mode !== 'cover') throw new Error('Unknown image fit.');
+      fit = mode;
+      rig.setImageFit(fit, pad, padColor);
+    },
+    setPad(value) {
+      if (!Number.isFinite(value) || value < 0 || value > 0.25) throw new Error('Padding must be between 0 and 0.25.');
+      pad = value;
+      rig.setImageFit(fit, pad, padColor);
+    },
+    setPadColor(hex) {
+      if (!/^#[0-9a-f]{6}$/i.test(hex)) throw new Error('Padding colour must be a six-digit hex colour.');
+      padColor = hex.toLowerCase();
+      rig.setImageFit(fit, pad, padColor);
+    },
+    getImage: () => image ? { ...image.meta, fit, pad, padColor } : null,
     onDeviceChange(cb) {
       listeners.push(cb);
     },

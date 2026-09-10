@@ -167,3 +167,151 @@ describe('§4.4.5 screen exempt from tone mapping', () => {
     expect(found, 'a non-screen pixel exists to the right of the screen centre').not.toBeNull();
   });
 });
+
+
+// T-P3 v2: independent image input evidence alongside the unchanged colour path.
+import { Vector3 } from 'three';
+import { createStage } from '../src/scene';
+import type { DeviceId } from '../src/devices/presets';
+
+function projectedScreen(id: DeviceId, u: number, v: number, enlargedRadius = false) {
+  const stage = createStage(id, 'soft-studio', 1280 / 800);
+  if (enlargedRadius) stage.setSpec({ ...stage.getSpec(), cornerRadius: id === 'browser' ? stage.getSpec().h * 0.09 : Math.min(stage.getSpec().w, stage.getSpec().h) * 0.2 });
+  const rig = stage.getRig();
+  stage.scene.updateMatrixWorld(true);
+  stage.camera.updateMatrixWorld(true);
+  const p = rig.screen.localToWorld(new Vector3((u - 0.5) * rig.screenSize.w, (v - 0.5) * rig.screenSize.h, 0)).project(stage.camera);
+  rig.dispose();
+  return { x: Math.round((p.x + 1) * 640), y: Math.round((1 - p.y) * 400) };
+}
+
+it('T-P3: textured levels through all scenes, tone mappers and glass states', async () => {
+  const started = Date.now();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const errors: string[] = [];
+  page.on('pageerror', (e) => errors.push(String(e)));
+  page.on('console', (m) => { if (m.type() === 'error') errors.push(m.text()); });
+  try {
+    await page.goto(`${url}?pg=1&device=tablet`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const samples = await page.evaluate(async (scenes) => {
+      const hook = window.__plinth;
+      const canvas = document.querySelector<HTMLCanvasElement>('#stage')!;
+      const gl = canvas.getContext('webgl2')!;
+      const source = document.createElement('canvas'); source.width = 16; source.height = 16;
+      const ctx = source.getContext('2d')!;
+      const levels = [0, 128, 232, 240, 252, 254, 255];
+      const images = levels.map((v) => { ctx.fillStyle = `rgb(${v},${v},${v})`; ctx.fillRect(0, 0, 16, 16); return source.toDataURL(); });
+      const out: Array<{ scene: string; tm: string; glass: boolean; level: number; rgb: number[] }> = [];
+      for (const scene of scenes) {
+        hook.setScene(scene);
+        for (const tm of ['agx', 'aces'] as const) {
+          hook.setToneMapping(tm);
+          for (const glass of [false, true]) {
+            hook.setSpec({ ...hook.getSpec(), glassClearcoat: glass ? 1 : 0 });
+            hook.setFit('cover'); hook.setPad(0);
+            for (let i = 0; i < levels.length; i++) {
+              // P-7 bounds glare at the existing mid-grey probe; highlights test the unlit path.
+              if (glass && levels[i] !== 128) continue;
+              await hook.setImage(images[i]!);
+              const centre = hook.screenCentrePx();
+              const rgba = new Uint8Array(4);
+              gl.readPixels(centre.x, canvas.height - 1 - centre.y, 1, 1, gl.RGBA, gl.UNSIGNED_BYTE, rgba);
+              out.push({ scene, tm, glass, level: levels[i]!, rgb: Array.from(rgba.slice(0, 3)) });
+            }
+          }
+        }
+      }
+      return out;
+    }, [...SCENES]);
+    expect(samples).toHaveLength(64);
+    for (const s of samples) {
+      const label = JSON.stringify(s);
+      if (!s.glass) expect(s.rgb, label).toEqual([s.level, s.level, s.level]);
+      else for (const value of s.rgb) {
+        expect(value - s.level, label).toBeGreaterThanOrEqual(-TOLERANCE);
+        expect(value - s.level, label).toBeLessThanOrEqual(GLARE_MAX);
+      }
+    }
+    expect(errors).toEqual([]);
+  } finally {
+    console.log(`T-P3 textured matrix wall time: ${Date.now() - started} ms`);
+    await page.close();
+  }
+});
+
+it('T-P3: a textured screen also renders through non-PG MSAA', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?msaa=1&device=tablet`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const centre = await page.evaluate(async () => {
+      const source = document.createElement('canvas'); source.width = 32; source.height = 32;
+      const ctx = source.getContext('2d')!; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, 32, 32);
+      window.__plinth.setSpec({ ...window.__plinth.getSpec(), glassClearcoat: 0 });
+      await window.__plinth.setImage(source.toDataURL());
+      return window.__plinth.screenCentrePx();
+    });
+    const png = PNG.sync.read(await page.locator('#stage').screenshot());
+    const i = (centre.y * png.width + centre.x) * 4;
+    for (const v of png.data.subarray(i, i + 3)) expect(Math.abs(v - GREY)).toBeLessThanOrEqual(TOLERANCE);
+  } finally { await page.close(); }
+});
+
+it('T-P3: upright asymmetric sampling and SDF corners on all five devices', async () => {
+  const started = Date.now();
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    // Intercept submitted shaders, independently of geometry and image metadata.
+    await page.addInitScript(() => {
+      const original = WebGL2RenderingContext.prototype.shaderSource;
+      const submitted: string[] = [];
+      Object.assign(window, { __screenShaders: submitted });
+      WebGL2RenderingContext.prototype.shaderSource = function (shader, source) {
+        submitted.push(source); original.call(this, shader, source);
+      };
+    });
+    await page.goto(`${url}?pg=1&device=phone`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    for (const id of ['phone', 'tablet', 'laptop', 'browser', 'card'] as const) {
+      await page.evaluate(async (device) => {
+        const hook = window.__plinth; hook.setDevice(device);
+        const spec = hook.getSpec();
+        // Enlarge the opening radius so corners span multiple reference-GPU samples.
+        hook.setSpec({ ...spec, glassClearcoat: 0, cornerRadius: device === 'browser' ? spec.h * 0.09 : Math.min(spec.w, spec.h) * 0.2 });
+        hook.setFit('cover'); hook.setPad(0);
+        const source = document.createElement('canvas'); source.width = 200; source.height = 200;
+        const ctx = source.getContext('2d')!;
+        for (const [x, y, colour] of [[0, 0, '#ff0000'], [100, 0, '#00ff00'], [0, 100, '#0000ff'], [100, 100, '#ffff00']] as const) {
+          ctx.fillStyle = colour; ctx.fillRect(x, y, 100, 100);
+        }
+        await hook.setImage(source.toDataURL());
+      }, id);
+      const png = PNG.sync.read(await page.locator('#stage').screenshot());
+      for (const [u, v, colour] of [[0.3, 0.7, [255, 0, 0]], [0.7, 0.7, [0, 255, 0]], [0.3, 0.3, [0, 0, 255]], [0.7, 0.3, [255, 255, 0]]] as const) {
+        const p = projectedScreen(id, u, v, true);
+        const i = (p.y * png.width + p.x) * 4;
+        expect(Array.from(png.data.subarray(i, i + 3)), `${id} upright quadrant ${u},${v}`).toEqual(colour);
+      }
+      for (const [u, v, colour] of [[0.01, 0.99, [255, 0, 0]], [0.99, 0.99, [0, 255, 0]], [0.01, 0.01, [0, 0, 255]], [0.99, 0.01, [255, 255, 0]]] as const) {
+        const p = projectedScreen(id, u, v, true);
+        const i = (p.y * png.width + p.x) * 4;
+        const rgb = Array.from(png.data.subarray(i, i + 3));
+        if (id === 'browser' && v > 0.5) expect(rgb, 'square top corners meet title bar').toEqual(colour);
+        else expect(rgb, `${id} rounded corner ${u},${v}`).not.toEqual(colour);
+      }
+    }
+    const shaders = await page.evaluate(() => (window as unknown as { __screenShaders: string[] }).__screenShaders);
+    const screenShaders = shaders.filter((s) => s.includes('uniform vec4 screenRadii'));
+    expect(screenShaders.length).toBeGreaterThan(0);
+    for (const s of screenShaders) {
+      expect(s).toContain('fwidth(screenEdge)');
+      expect(s).toContain('if (screenEdge > 0.0) discard;');
+      expect(s).toContain('screenRadii.x : screenRadii.y');
+      expect(s).toContain('screenRadii.w : screenRadii.z');
+    }
+  } finally {
+    console.log(`T-P3 five-device image/corner wall time: ${Date.now() - started} ms`);
+    await page.close();
+  }
+});

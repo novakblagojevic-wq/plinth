@@ -12,9 +12,12 @@ import {
   PlaneGeometry,
   Shape,
   ShapeGeometry,
+  Texture,
   Vector3,
 } from 'three';
 import { screenRect, shapeHash, type DeviceSpec } from './spec';
+import { patchScreen } from '../screen/material';
+import type { FitMode, Size } from '../screen/types';
 
 /**
  * PLINTH_SPEC §4.2 — builds a generic parametric slab from a `DeviceSpec`.
@@ -33,8 +36,8 @@ import { screenRect, shapeHash, type DeviceSpec } from './spec';
  *               the WALLS come out at exactly w × h and the opening at exactly
  *               the screen rect. Bounding box is exact: w × h × depth.
  *   backplate — a box behind the opening so the recess has a floor.
- *   screen    — a flat rectangle at `depth − screenInset`, dark placeholder.
- *               The texture and the SDF corner mask are T-P3 (§4.1).
+ *   screen    — a flat rectangle at `depth − screenInset`, with an emissive
+ *               screenshot and SDF corner mask (§4.1).
  *   base      — `hinge` only: a second extruded slab lying flat, the screen
  *               slab pivoting at its back edge by `hingeAngle`.
  *   plate     — `plate` only: a thin slab the device stands on.
@@ -88,6 +91,10 @@ export interface DeviceRig {
   spec: DeviceSpec;
   /** Re-apply a spec: geometry is rebuilt only when a shape field changed. */
   update(spec: DeviceSpec): void;
+  /** Borrows the Stage-owned texture; never disposes it. */
+  setImage(texture: Texture, imageSize: Size): void;
+  setImageFit(mode: FitMode, pad: number, padColor: string): void;
+  setScreenColor(hex: string): void;
   dispose(): void;
 }
 
@@ -197,7 +204,7 @@ function makeMaterials(spec: DeviceSpec): Materials {
       metalness: spec.frameMetalness,
       roughness: spec.frameRoughness,
     }),
-    // T-P3 puts the screenshot on `emissiveMap`; until then a flat dark emissive.
+    // T-P3 binds a borrowed screenshot through the physical material patch.
     screen: new MeshPhysicalMaterial({
       color: 0x000000,
       emissive: 0x0f1115,
@@ -462,6 +469,16 @@ export function buildDevice(initial: DeviceSpec, browser = false): DeviceRig {
   let spec = { ...initial };
   let hash = shapeHash(spec);
   let built = buildInto(group, spec, mats, browser);
+  const picture = patchScreen(mats.screen);
+  let imageSize: Size = { w: 1, h: 1 };
+  let fit: FitMode = 'contain';
+  let pad = 0;
+  let padColor = '#ffffff';
+  function refreshScreen(): void {
+    const r = screenRect(spec).radius;
+    picture.refresh(imageSize, built.screenSize, browser ? [0, 0, r, r] : [r, r, r, r], fit, pad, padColor);
+  }
+  refreshScreen();
 
   const rig: DeviceRig = {
     group,
@@ -487,7 +504,19 @@ export function buildDevice(initial: DeviceSpec, browser = false): DeviceRig {
       rig.screenSize = built.screenSize;
       rig.bounds = built.bounds;
       rig.spec = spec;
+      refreshScreen();
     },
+    setImage(texture, size) {
+      imageSize = picture.bind(texture, size);
+      refreshScreen();
+    },
+    setImageFit(mode, value, colour) {
+      fit = mode;
+      pad = value;
+      padColor = colour;
+      refreshScreen();
+    },
+    setScreenColor: (hex) => picture.colour(hex),
     dispose() {
       disposeGeometries(group);
       group.clear();

@@ -106,3 +106,205 @@ describe('§7 pg mode', () => {
     await page.close();
   });
 });
+
+
+// T-P3 v2 additions: real inputs, first rendered frame and P-9 limits.
+import { PNG } from 'pngjs';
+
+it('T-P3: the first ready transition contains the committed demo, after image/SDF warm-up', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.addInitScript(() => {
+      let imageShaderBeforeReady = false;
+      const compile = WebGL2RenderingContext.prototype.compileShader;
+      WebGL2RenderingContext.prototype.compileShader = function (shader) {
+        const source = this.getShaderSource(shader) ?? '';
+        if (!document.documentElement?.dataset['plinthReady'] && source.includes('uniform vec4 screenRadii') && source.includes('#define USE_EMISSIVEMAP')) imageShaderBeforeReady = true;
+        compile.call(this, shader);
+      };
+      const observer = new MutationObserver(() => {
+        if (document.documentElement?.dataset['plinthReady'] !== '1') return;
+        const canvas = document.querySelector<HTMLCanvasElement>('#stage')!;
+        Object.assign(window, { __firstImageFrame: {
+          meta: window.__plinth.getImage(), png: canvas.toDataURL(), imageShaderBeforeReady,
+          centre: window.__plinth.screenCentrePx(), size: [canvas.width, canvas.height],
+        } });
+        observer.disconnect();
+      });
+      observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-plinth-ready'] });
+    });
+    await page.goto(`${url}?pg=1&msaa=1&device=tablet`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const first = await page.evaluate(() => (window as unknown as { __firstImageFrame: {
+      meta: ReturnType<typeof window.__plinth.getImage>; png: string; imageShaderBeforeReady: boolean;
+      centre: { x: number; y: number }; size: number[];
+    } }).__firstImageFrame);
+    expect(first.meta).toMatchObject({ identity: 'demo', originalWidth: 2880, originalHeight: 1800, fit: 'contain', pad: 0, padColor: '#ffffff' });
+    expect(first.size).toEqual([1280, 800]);
+    expect(first.imageShaderBeforeReady).toBe(true);
+    const png = PNG.sync.read(Buffer.from(first.png.split(',')[1]!, 'base64'));
+    const colours = new Set<string>();
+    for (let y = first.centre.y - 40; y <= first.centre.y + 40; y += 4) {
+      for (let x = first.centre.x - 80; x <= first.centre.x + 80; x += 4) {
+        const i = (y * png.width + x) * 4;
+        colours.add(png.data.subarray(i, i + 3).toString('hex'));
+      }
+    }
+    // Sample inside the screen, excluding frame, shadow and letterbox. A flat
+    // placeholder or a canvas cleared before observation has just one colour.
+    expect(colours.size, 'image content in the first rendered canvas').toBeGreaterThan(1);
+    const entry = readFileSync(join(ROOT, 'src/main.ts'), 'utf8');
+    const mounting = entry.indexOf('stage.setImage(demo.bitmap');
+    const studio = entry.indexOf('const studio = createStudio(');
+    expect(mounting).toBeGreaterThan(-1);
+    expect(studio).toBeGreaterThan(mounting);
+    expect(entry.indexOf('await studio.ready')).toBeGreaterThan(studio);
+  } finally { await page.close(); }
+});
+
+it('T-P3: 9000×2000 input obeys the independently observed GPU cap and visible note', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?pg=1`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const result = await page.evaluate(async () => {
+      const gl = document.querySelector<HTMLCanvasElement>('#stage')!.getContext('webgl2')!;
+      const maxTextureSize = gl.getParameter(gl.MAX_TEXTURE_SIZE) as number;
+      const source = document.createElement('canvas'); source.width = 9000; source.height = 2000;
+      const ctx = source.getContext('2d')!; ctx.fillStyle = '#808080'; ctx.fillRect(0, 0, source.width, source.height);
+      await window.__plinth.setImage(source.toDataURL('image/png'));
+      return { maxTextureSize, image: window.__plinth.getImage(), note: document.querySelector('#note')!.textContent };
+    });
+    const cap = Math.min(8192, result.maxTextureSize); // §9 P-9(2), queried from the actual WebGL context.
+    expect(result.image).toMatchObject({ originalWidth: 9000, originalHeight: 2000, width: cap, height: Math.round(2000 * cap / 9000), cap, downscaled: true, identity: 'user' });
+    expect(result.note).toContain(String(cap));
+    expect(await page.locator('#note').isVisible()).toBe(true);
+    console.log(`T-P3 CI MAX_TEXTURE_SIZE=${result.maxTextureSize}; applied cap=${cap}`);
+  } finally { await page.close(); }
+});
+
+it('T-P3: file-backed drop, paste and picker decode PNG/JPG/WebP without off-origin requests', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  const requests: string[] = []; const errors: string[] = [];
+  page.on('request', (request) => requests.push(request.url()));
+  page.on('pageerror', (error) => errors.push(String(error)));
+  page.on('console', (message) => { if (message.type() === 'error') errors.push(message.text()); });
+  try {
+    await page.goto(`${url}?pg=1&device=tablet`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    await page.evaluate(() => {
+      window.__plinth.setSpec({ ...window.__plinth.getSpec(), glassClearcoat: 0 });
+      window.__plinth.setFit('cover');
+    });
+    let previous = await page.locator('#stage').screenshot();
+    const payloads = await page.evaluate(() => {
+      return ['image/png', 'image/jpeg', 'image/webp'].map((type, i) => {
+        const canvas = document.createElement('canvas'); canvas.width = 64 + i; canvas.height = 32;
+        const ctx = canvas.getContext('2d')!; ctx.fillStyle = ['#ff0000', '#00ff00', '#0000ff'][i]!;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        return canvas.toDataURL(type, 1);
+      });
+    });
+    for (const [i, action] of ['drop', 'paste', 'pick'].entries()) {
+      const data = payloads[i]!;
+      if (action === 'pick') {
+        await page.locator('#image-file').setInputFiles({ name: 'input.webp', mimeType: 'image/webp', buffer: Buffer.from(data.split(',')[1]!, 'base64') });
+      } else {
+        await page.evaluate(async ({ data, action }) => {
+          const blob = await (await fetch(data)).blob();
+          const transfer = new DataTransfer(); transfer.items.add(new File([blob], 'input', { type: blob.type }));
+          if (action === 'drop') document.querySelector('#stage')!.dispatchEvent(new DragEvent('drop', { bubbles: true, cancelable: true, dataTransfer: transfer }));
+          else window.dispatchEvent(new ClipboardEvent('paste', { bubbles: true, cancelable: true, clipboardData: transfer }));
+        }, { data, action });
+      }
+      await page.waitForFunction((width) => window.__plinth.getImage()?.originalWidth === width, 64 + i);
+      const current = await page.locator('#stage').screenshot();
+      expect(current.equals(previous), `${action} rendered a replacement`).toBe(false);
+      const info = await page.evaluate(() => ({ image: window.__plinth.getImage(), centre: window.__plinth.screenCentrePx(), note: document.querySelector('#note')!.textContent }));
+      expect(info.image).toMatchObject({ identity: 'user', originalWidth: 64 + i, originalHeight: 32 });
+      expect(info.note).toBe('');
+      const png = PNG.sync.read(current);
+      const offset = (info.centre.y * png.width + info.centre.x) * 4;
+      expect(png.data[offset + i], `${action} image's coloured centre`).toBeGreaterThan(250);
+      previous = current;
+    }
+    const foreign = requests.filter((u) => {
+      const parsed = new URL(u);
+      return parsed.origin !== new URL(url).origin && parsed.protocol !== 'data:' && parsed.protocol !== 'blob:';
+    });
+    expect(foreign, `§2.2 input-session violations: ${foreign.join('\n')}`).toEqual([]);
+    expect(requests.length).toBeGreaterThan(0);
+    expect(errors).toEqual([]);
+  } finally { await page.close(); }
+});
+
+it('T-P3: EXIF orientation is applied once, retaining oriented dimensions and landmarks', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?pg=1&device=tablet`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const result = await page.evaluate(async () => {
+      const source = document.createElement('canvas'); source.width = 120; source.height = 80;
+      const ctx = source.getContext('2d')!;
+      ctx.fillStyle = '#ff0000'; ctx.fillRect(0, 0, 60, 80);
+      ctx.fillStyle = '#0000ff'; ctx.fillRect(60, 0, 60, 80);
+      const jpeg = new Uint8Array(await (await (await fetch(source.toDataURL('image/jpeg', 1))).blob()).arrayBuffer());
+      // APP1, little-endian TIFF, one SHORT orientation tag with value 6 (90° CW).
+      const exif = new Uint8Array([255,225,0,34,69,120,105,102,0,0,73,73,42,0,8,0,0,0,1,0,18,1,3,0,1,0,0,0,6,0,0,0,0,0,0,0]);
+      const tagged = new Blob([jpeg.slice(0, 2), exif, jpeg.slice(2)], { type: 'image/jpeg' });
+      const hook = window.__plinth;
+      hook.setSpec({ ...hook.getSpec(), glassClearcoat: 0 }); hook.setFit('cover');
+      await hook.setImage(tagged);
+      return { meta: hook.getImage(), centre: hook.screenCentrePx() };
+    });
+    expect(result.meta).toMatchObject({ originalWidth: 80, originalHeight: 120, width: 80, height: 120 });
+    const png = PNG.sync.read(await page.locator('#stage').screenshot());
+    const upper = ((result.centre.y - 25) * png.width + result.centre.x) * 4;
+    const lower = ((result.centre.y + 25) * png.width + result.centre.x) * 4;
+    expect(png.data[upper]).toBeGreaterThan(250);
+    expect(png.data[upper + 2]).toBeLessThan(3);
+    expect(png.data[lower]).toBeLessThan(3);
+    expect(png.data[lower + 2]).toBeGreaterThan(250);
+  } finally { await page.close(); }
+});
+
+it('T-P3: failed inputs keep the last image and show a visible error until success', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?pg=1`);
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const capturePixels = async (): Promise<Buffer> => {
+      const data = await page.evaluate(() => {
+        const hook = window.__plinth;
+        // Repaint through the existing composer without changing device or image.
+        // Read in the same task: WebGL's drawing buffer is not preserved.
+        hook.setDevice(hook.getDevice());
+        return document.querySelector<HTMLCanvasElement>('#stage')!.toDataURL('image/png');
+      });
+      return Buffer.from(data.split(',')[1]!, 'base64');
+    };
+    // Element screenshots include overlapping DOM notes. Compare the entire
+    // intrinsic canvas instead; the note remains independently asserted below.
+    const before = await capturePixels();
+    const decoded = PNG.sync.read(before);
+    expect([decoded.width, decoded.height]).toEqual([1280, 800]);
+    const colours = new Set<string>();
+    for (let i = 0; i < decoded.data.length; i += 4) colours.add(decoded.data.subarray(i, i + 3).toString('hex'));
+    expect(colours.size, 'capture contains a rendered stage, not a cleared buffer').toBeGreaterThan(1);
+    for (const data of ['data:image/gif;base64,R0lGODlh', 'data:image/png;base64,iVBORw0KGgo=']) {
+      const failed = await page.evaluate(async (src) => {
+        try { await window.__plinth.setImage(src); return false; } catch { return true; }
+      }, data);
+      expect(failed).toBe(true);
+      expect(await page.locator('#note').innerText()).not.toBe('');
+      expect(await page.locator('#note').isVisible()).toBe(true);
+      expect(await page.evaluate(() => window.__plinth.getImage()?.identity)).toBe('demo');
+      expect((await capturePixels()).equals(before)).toBe(true);
+    }
+    await page.evaluate(async () => {
+      const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
+      await window.__plinth.setImage(canvas.toDataURL());
+    });
+    expect(await page.locator('#note').innerText()).toBe('');
+  } finally { await page.close(); }
+});
