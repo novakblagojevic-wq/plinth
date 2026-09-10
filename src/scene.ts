@@ -41,6 +41,9 @@ export interface Stage {
 export const FRAME_FILL = 0.6;
 export const CAMERA_FOV = 32;
 const VIEW_DIR = new Vector3(0.28, 0.38, 1).normalize();
+// A lower viewpoint and longer lens keep wide upright screens from keystoning.
+const WIDE_SCREEN_VIEW_DIR = new Vector3(0.2, 0.16, 1).normalize();
+const WIDE_SCREEN_FOV = 24;
 
 export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspect: number): Stage {
   const scene = new Scene();
@@ -77,10 +80,14 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   function frame(): void {
     const size = rig.bounds.getSize(new Vector3());
     const centre = rig.bounds.getCenter(new Vector3());
-    const halfFov = (camera.fov * Math.PI) / 360;
+    const wideScreen = id === 'tablet' || id === 'browser' || id === 'card';
+    camera.fov = wideScreen ? WIDE_SCREEN_FOV : CAMERA_FOV;
+    const halfFov = (CAMERA_FOV * Math.PI) / 360;
     const fit = Math.max(size.y, size.x / camera.aspect, size.z / camera.aspect) / FRAME_FILL;
     const dist = fit / 2 / Math.tan(halfFov) + Math.max(size.z, size.x) / 2;
-    camera.position.copy(centre).addScaledVector(VIEW_DIR, dist);
+    // Move back with the longer lens to retain the existing framing scale.
+    const lensScale = Math.tan(halfFov) / Math.tan((camera.fov * Math.PI) / 360);
+    camera.position.copy(centre).addScaledVector(wideScreen ? WIDE_SCREEN_VIEW_DIR : VIEW_DIR, dist * lensScale);
     camera.lookAt(centre);
     camera.updateProjectionMatrix();
   }
