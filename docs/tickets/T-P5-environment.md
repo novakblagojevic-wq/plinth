@@ -46,3 +46,21 @@ Ako lokalni Chromium i pristup postanu dostupni, ponoviti ceo gate na tadašnjem
 main-u. GitHub CI na ovom planskom PR-u proverava dokumentacioni kandidat u
 GitHub okruženju; nije potvrda izvršnog okruženja za budućeg implementatora.
 P-10(7) ostaje otvoren do punog prolaza izabrane površine.
+
+
+## Probni paket zasebnog T-P5 profila
+
+Priprema: 2026-09-11. Autor: Codex; tačan backend identifikator nije izložen.
+Plinth PR #9 i Astra runner PR #5 spojeni su uz Novakovo izričito odobrenje.
+Osnova ove probe: `b0634fc78156a5f487f0ae1a663bc973c1b994fa`.
+Runner profil: merge `d2f2890f8de132ba8e9ed277c083f69d0a90586b`.
+
+Ovaj dodatak dokumentaciji je namerno jedina izmena u probnom kandidatu.
+Ne menja kameru, runtime, testove, guardove, specifikaciju ili PG baseline.
+Sadržaj paketa nastaje pre pokretanja provere i zato ne tvrdi da je proba prošla.
+
+Za dokaz su potrebni uspešni rezultati svih osam komandi na čistoj osnovi i
+kandidatu, neizmenjena osnova, validiran artefakt i zasebna uspešna objava draft
+PR-a preko čistog worker-a. Stvarni ishod i run/attempt/SHA identiteti beleže se
+u izveštaju Astre i PR diskusiji. Opšta dijagnostika i infrastruktura unit testovi
+nisu zamena za ovaj dokaz. Merge probnog PR-a nije automatski odobren.
