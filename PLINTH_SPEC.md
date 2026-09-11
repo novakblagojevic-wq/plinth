@@ -373,6 +373,99 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
      proceed before the gate passes; implementation may not. Failure moves
      the schedule and any video-cut decision, never removes the gate.
 
+- P-11 — Predlog ugovora kamere i poziranja (2026-09-11, planska Codex sesija;
+  tačan backend identifikator nije izložen; `docs/tickets/T-P5-research.md`,
+  F1–F3/F6–F7/F10–F13). **Predlog na PR grani; postaje važeći tek posle
+  Novakove odluke i merge-a.** Ne predstavlja implementaciju ili potvrdu slika.
+  1. **Izvor i koordinatni ugovor (§4.3; F10–F12).** Referenca za damp/aspectFix
+     je `threejs-technique-vault` Entry 6 F, ne Entry 2 E. Prenosi se matematički
+     princip; kage kod bez odobrene licence se ne kopira. World jedinica ostaje
+     metar, +Y je gore, pod je y=0, +Z je prednja strana osnovnog uspravnog
+     ekrana. Kamera gleda u centar posedovanih world granica uređaja, sa up=(0,1,0).
+     Poza obuhvata ceo uređaj, uključujući laptop bazu; ne menja `DeviceSpec`,
+     hinge, sliku ili crop. Rotacija je lokalna XYZ Euler rotacija u stepenima
+     u tabeli ispod, konvertovana u quaternion za prelaz. Pre rotacije uređaj
+     koristi builder-ov lokalni pod i centriranje; posle nje prevesti ceo uređaj
+     tako da je centar njegovog world raspona X/Z na (0,0), a njegova stvarna
+     najniža tačka na y=0. Isto važi tokom prelaza, bez kumulativnog pomeranja.
+  2. **Četiri poze i prihvaćeni kadar (§4.3; F1/F12).** Podrazumevana poza je
+     `hero`. Smer u tabeli je vektor od target-a ka kameri, normalizovan pre
+     određivanja udaljenosti. „Široki” su klase tablet/browser/card po ID-u,
+     kao u prihvaćenom T-P3 v2 kadru; ta klasifikacija ne zavisi od upload slike.
+     Početne vrednosti za implementaciju su:
+
+     | Poza | Rotacija celog uređaja XYZ | Smer ka kameri |
+     |---|---|---|
+     | `front` | (0,0,0) | (0,tan(5°),1) |
+     | `hero` | (0,0,0) | široki (0.2,0.16,1); phone/laptop (0.28,0.38,1) |
+     | `top` | laptop (0,0,0); ostali (-90,0,0) | laptop (0,sin(65°),cos(65°)); ostali (0,sin(80°),cos(80°)) |
+     | `lean` | (-20,0,0) | (0.2,0.16,1) |
+
+     `top` pokazuje ekran položenih slabova i ekran/bazu otvorenog laptopa;
+     `lean` naginje ceo uređaj unazad, sa osloncem na pod. Hero zadržava mali
+     ugao pogleda postojećeg kadra, naročito širokih ekrana. Na referentnom
+     aspektu a0=1280/800 hero zadržava postojeće smerove, vertikalni FOV
+     (24° široki, 32° phone/laptop) i postojeću `frame()` udaljenost na osnovi
+     `67afe76b`, osim ako dokaz projekcije zahteva dodatno udaljavanje.
+     To nije dopuštenje da se ponovo iskrive široke ivice: CI kontaktni list
+     svih poza i širokih uređaja ide Novaku na vizuelnu potvrdu pre prihvatanja.
+  3. **Responzivno uokviravanje (§4.3/§4.5; F1/F2/F12).** Za pozitivan konačan
+     aspekt a, r=clamp(a0/a-1,0,1), FOV=FOV0+4°*r. FOV0 je navedena vrednost
+     klase uređaja; zato široki ekrani ostaju u rasponu 24–28°, a ostali 32–36°.
+     Manji aspekt menja FOV i udaljenost duž iste ose, ne rotaciju/target,
+     proporcije geometrije ili mapiranje slike. Za svaki trenutni pogled prvo
+     odrediti referentnu udaljenost za a0 i FOV0 po postojećem `frame()` izrazu
+     (FRAME_FILL=0.6, sada primenjenom na posedovane world granice). Stvarna
+     udaljenost je najmanje ta referentna udaljenost i mora zadovoljiti
+     projekciju svih osam uglova konzervativnog world AABB-a: konačne vrednosti,
+     pozitivna dubina između near/far i |NDC x|, |NDC y| ≤ 0.9. Near/far moraju
+     obuhvatiti ceo uređaj; dodatna udaljenost je dozvoljena kad je potrebna.
+     Na širokom aspektu ne približavati uređaj samo da bi popunio širinu.
+     Ne uvoditi letterbox ili crop. Ova margina je zaštita uređaja u T-P5;
+     korisnički output padding dolazi zasebno u T-P6.
+  4. **Orbit i prekid (§4.3; F6/F7).** Azimut se meri od +Z ka +X i ograničen
+     je na [-75°,75°]; elevacija iznad XZ poda na [5°,85°]. Nema roll-a kamere,
+     gimbal flip-a ili pogleda ispod poda. Jedan aktivan pointer drag menja
+     orbit; pan, wheel/pinch zoom nisu deo ovog ticketa. Prvi stvarni pomeraj
+     prekida automatski prelaz iz tada prikazanog stanja, zadržava tadašnju
+     rotaciju uređaja i postavlja stanje poze na custom (`null` ID); ne vraća
+     početak ili cilj prelaza. Sledeći izbor poze kreće iz tog stanja. Resize
+     čuva izabranu/custom pozu i orbit. Promena uređaja/spec-a čuva stanje
+     poziranja, ponovo meri geometriju i uokvirava je. Ulaz van domena, NaN ili
+     beskonačnost na QA API-ju se odbija bez delimične promene stanja; delta
+     orbita se ograničava navedenim granicama. Kontroler poseduje i uklanja
+     sve svoje listenere, pointer capture i zakazane callback-ove pri gašenju.
+  5. **Prelazi i PG (§4.3/§7; F7/F12).** Trajanje prelaza je 0.75 s, lambda=8
+     s⁻¹. Iz fiksnog početka ka nepromenjenom cilju za ukupno vreme t koristiti
+     težinu 1-exp(-8*t), a pri t≥0.75 tačno postaviti cilj i zaustaviti rad.
+     Quaternion interpolacija ide kraćim lukom; smer kamere preko azimuta i
+     elevacije u zadatom opsegu. Floor korekcija i bezbedan framing računaju
+     se iz trenutne interpolirane poze, ne interpoliraju se samo krajnji AABB-i.
+     Novi cilj pre završetka hvata trenutno prikazano stanje i vraća t na 0.
+     Čista vremenska funkcija prima konačan dt≥0 u sekundama; dt=0 ne menja
+     stanje. Bez inputa i promene cilja, isto ukupno vreme daje isto stanje
+     nezavisno od podele na kadrove. Interaktivni adapter koristi timestamp
+     iz requestAnimationFrame callback-a; ne uvodi Date, performance.now ili
+     random u `src/`. Pauza vidljivosti zaustavlja raspored i resetuje samo
+     prethodni rAF timestamp pri povratku, bez skrivenog skoka vremena.
+     PG ne priključuje orbit input ili interaktivni raspored; izbor poze i
+     query stanje postavlja odmah. Odvojena čista funkcija dozvoljava precizno
+     uzorkovanje prelaza za testove; PG se ne oslanja na čekanje realnog vremena.
+     Postojeći default ?pg=1 ostaje 1280×800/DPR1/demo; dodatni capture slučajevi
+     za aspekte su eksplicitni QA izbori. Puni seek i motion pripadaju T-P8a.
+  6. **Pod, senka i odgovornost (§4.4/P-6/P-7; F2/F3/F11).** Posle rotacije
+     ažurirati world matrice, uraditi centriranje/floor korekciju, ponovo
+     izmeriti granice, uokviriti i tek onda osvežiti senku/prikaz. Floor dokaz
+     uključuje geometriju instanci; konzervativni AABB bez dodira najniže
+     stvarne tačke nije dovoljan za tvrdnju da uređaj stoji na podu. Senku
+     invalidira promena world geometrije/poze ili scene preset-a; čista promena
+     kamere/aspekta ne zahteva novi depth capture. Snapshot svih privremeno
+     izmenjenih render/scene stanja i njihovo vraćanje u finally važe i kada
+     depth/blur baci izuzetak. Greška ne ostavlja lažan uspešan capture ili
+     sakrivenu ravan. P-6/P-7 boja, materijali, pipeline i postojeći guardovi
+     ostaju; P-10(7), nezavisan review, Novakova PG potvrda i merge nisu ovim
+     predlogom zamenjeni ili odobreni.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
