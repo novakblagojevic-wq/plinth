@@ -143,6 +143,53 @@ device, browser, elapsed time and failures. This small sample is not a
 statistical success claim or a substitute for the five-run §6 gate.
 Start performance observations during T-P5/T-P6; retain the final gate.
 
+## Follow-up findings — 2026-09-11
+
+Novak requested these three corrections after inspecting the proposed plan
+("Uradi sve to"). They revise this same documentation-only planning PR;
+they do not authorize implementation, merge or a baseline bless. The
+runtime base remains `8aa37c65ca14e32fd37986cd05d2aab44aee6373`; plan
+references below identify the initial PR head `ab53a8830e709b1475dfd95bd9e169e10cc84b85`.
+
+**F13 — Cutting the encoder must not cut the mandatory motion workload.**
+`docs/RELEASE-PLAN.md:52,56–59` makes T-P8 conditional but leaves the
+remaining motion work unassigned. `PLINTH_SPEC.md:166–168` requires
+`float` in the release performance segment, and `:201–204` retains motion
+presets when video export is cut. `src/scene.ts:22–34,48–150` has no
+motion/seek API today. Split the remaining work into mandatory T-P8a
+(virtual clock, all three specified on-screen motions, preview controls,
+Space and integration with T-P9 state) and conditional T-P8b (encoders,
+MP4/WebM, progress, Shift+V and export capability messages). Each needs
+its own research, implementation ticket, PR and independent review.
+T-P10 depends on T-P8a even in a PNG-only release. This changes ownership,
+not the existing performance or video acceptance contracts.
+
+**F14 — The repair buffer must precede submission.**
+`docs/RELEASE-PLAN.md:53–54` reserves September 28–30 for repairs while
+targeting submission on September 28. Make the target order explicit:
+T-P10 September 24–25, T-P11 September 26–28, then submission only after
+blocking findings are closed and affected checks pass on the final
+commit. September 29–30 is contingency, not planned feature work. If the
+28th target slips, keep acceptance intact and reassess the remaining
+time; never submit an unverified build merely to meet that target.
+
+**F15 — The build-environment dependency needs an observable exit.**
+`docs/HANDOFF.md:154–177` and `docs/RELEASE-PLAN.md:138–143` record local
+Chromium failures and the T-P3-only runner profile but do not schedule
+their resolution. A fresh local check on September 11 found Node
+`v24.19.0` and no executable at Playwright's configured Chromium path;
+`git fetch origin` succeeded. Read access does not establish write access
+or a passing build environment. Schedule an environment gate before
+T-P5 implementation: verify the selected surface's scoped Git access,
+Node/dependencies and Chromium; run `npm ci`, `npm run ci` and build on
+the then-current main and record its full SHA and command outcomes.
+If Astra is selected, authorize its T-P5 profile from the approved ticket
+write set in separate tooling work and verify base/candidate checks before
+sending implementation changes. Do not widen the T-P3 profile or infer
+local CI from a cloud result. Read-only research may proceed while this
+gate is unresolved; implementation may not. The existing documentation-
+only PR exception is not an exemption for T-P5.
+
 ## Sources checked 2026-09-11
 
 - **S1:** [Build Games brief](https://canivibecodeit.com/thebuildgames),
