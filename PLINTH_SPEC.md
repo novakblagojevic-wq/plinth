@@ -283,6 +283,73 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
   fixes the required asset's provenance and availability and the first-frame
   promise. (F6, F8; T-P3 v1 F6.)
 
+- P-10 — Competition release plan (2026-09-11; Novak accepted the direction;
+  planning research: `docs/tickets/RELEASE-PLAN-research.md`, F1–F12):
+  1. **Positioning (§1; F1/F12).** Prioritise a finished, reliable product for
+     Most Polished and a complete screenshot-to-promotional-image workflow for
+     Best Replacement. Creativity is supported by composed looks and motion.
+     The historical price/platform claims in §1 are not current evidence:
+     browser delivery alone is not unique, and Plinth does not claim to replace
+     every feature of a capture tool or a full animation editor. Publish only
+     verified product capabilities and pricing comparisons. The product promise,
+     the stack and §2 hard rules remain in force.
+  2. **Delivery order (§8, P-4; F2/F3).** After the merged T-P1–T-P4 work,
+     including T-P3 v2, the remaining order is **T-P5 → T-P6 → T-P7 → T-P9
+     core → T-P8 (conditional) → T-P10 → T-P11**. This supersedes the old
+     relative order of T-P8 and T-P9. T-P6 owns the responsive panel scaffold
+     on desktop and mobile, including touch-safe primary controls; T-P7 owns
+     actual PNG download on both. T-P9 core owns the remaining mobile polish,
+     validated/versioned URL hash state and non-video shortcuts. T-P8 owns
+     video capability messages and video/motion shortcut integration, using
+     T-P9's keyboard/state infrastructure. Until those features exist, no
+     inactive shortcut or unavailable export is presented as working.
+  3. **Panel scope (§4.2–§4.5, P-4; F4/F8).** T-P6 adds exactly four curated
+     composition presets built from the existing device/scene choices and
+     T-P5 poses, with preview thumbnails; it adds a reset of composition
+     settings that preserves the loaded image. The ticket defines each
+     preset's complete settings, reset defaults and interaction semantics.
+     Primary controls cover image fit/padding, device, composition, scene,
+     background and output frame; detailed geometry/material controls are
+     grouped under Advanced, without removing the §4.2 editable fields.
+     Establish a shared in-memory settings contract for controls and reset;
+     persistent URL serialization remains T-P9. This adds no scene-lighting
+     presets beyond the four in §4.4, external assets, extra devices,
+     multi-device scenes, batch export, account or backend.
+  4. **Research gates (F5–F9).** T-P5 must cover rotated world bounds,
+     contact-shadow updates, floor constraints, deterministic timing and
+     preservation of the accepted wide-screen perspective. Before opening
+     their implementation tickets, T-P6/T-P7 must settle transparent preview,
+     the colour-preserving export path, exact base dimensions/rounding for
+     each aspect, the pixel-comparison method/threshold and behaviour when a
+     requested size cannot be supported. Before T-P8, research must verify
+     encoder/format capabilities and whether each path meets the exact
+     frame-count contract. Any missing normative decision is a separate
+     P-entry before the affected build, not an implementation guess. This
+     entry does not reduce dimensions silently, relax the video contract,
+     change the Safari policy or weaken any guard/baseline/test.
+  5. **Milestones and cut decision (§8; F2/F3/F9).** Target usable PNG plus
+     mobile controls by September 17, video decision on September 19, and a
+     stable video implementation by September 23 if retained. The existing
+     first cut remains video export: if it threatens the complete PNG/mobile
+     flow or release verification, Novak chooses the already permitted
+     PNG-only release. Keep only stable on-screen motion; reflect the selected
+     scope in the UI, README and submission. Do not claim a cut feature works.
+     T-P10 and the T-P11 repair buffer are protected. Dates in
+     `docs/RELEASE-PLAN.md` are planning targets, never permission to skip
+     research, CI, independent review or a required baseline bless.
+  6. **Evidence and handoff (§6–§7; F10–F12).** Observe performance during
+     T-P5/T-P6; retain the full five-run §6 release gate and report its actual
+     hardware and trust level. A proposed usability target is four of five
+     first-time participants independently downloading a usable PNG within
+     one minute after readiness; record the observations, not an invented
+     success rate. T-P3 v2 is merged with an explicitly recorded owner merge
+     exception, not a retroactive fresh review or fixture bless. Obtain a
+     fresh-session post-merge audit and prepare the CI contact sheet for
+     Novak's first bless after T-P5, or earlier at his direction. Only Novak
+     blesses fixtures. Prepare the submission for September 28, ahead of the
+     published September 30 New York deadline; submission and merge remain
+     Novak's decisions. No prize outcome is guaranteed by this plan.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
