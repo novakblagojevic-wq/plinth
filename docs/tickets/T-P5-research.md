@@ -131,3 +131,47 @@ kopiranje koda; matematički princip se implementira samostalno.
 
 Ove reference dopunjuju F1–F10. Nisu zamena za važeću specifikaciju, licence
 pri uvođenju zavisnosti, environment gate, CI, human bless ili nezavisan review.
+
+## Dopuna planiranja, 2026-09-11 — F11–F13
+
+Codex planska sesija je ponovo pročitala nepromenjeni main `67afe76b` i lokalni
+izvor pinovanog `three@0.185.1`. Ovo su dodatni nalazi, ne tvrdnja da ih je
+napisala prvobitna read-only sesija. Prethode dopuni ticketa i P-11 predlogu.
+
+### F11 — Poziranje mora biti izvan geometrijskog builder-a
+
+`src/devices/build.ts:buildInto` (399–462) čisti grupu, procenjuje bounds i
+ponovo postavlja njen položaj. `DeviceRig.update` (487–508) isti postupak
+ponavlja pri promeni geometrije. Trajna rotacija ili pozicija ubačena u istu
+grupu zato može uticati na naredno merenje/centriranje. Predlog: Stage poseduje
+spoljni pose pivot; pre rebuild-a vrati taj pivot na identitet, zatim ponovo
+primeni pozu. Tako builder ostaje neizmenjen, a poze i resize ne gube stanje.
+
+`three/src/math/Box3.js:expandByObject` (303–379) na pinovanoj verziji navodi da
+`precise=true` koristi verteks podatke za obične mesh-eve, ali **ne za
+InstancedMesh**. Laptop tasteri jesu instancirani. Konzervativni world AABB je
+dobar za bezbedan framing, ali nije sam dokaz dodira sa podom. Floor test mora
+posmatrati stvarne transformisane vertekse, uključujući instance, ili ekvivalentnu
+tačnu donju granicu. Ne meriti celu scenu sa svetlima i shadow ravni.
+
+### F12 — Postojeći hero i novi ugovor mogu da se razdvoje bez gubitka perspektive
+
+`src/scene.ts:frame` (80–93) za tablet/browser/card koristi smer `(0.2,0.16,1)`
+i FOV 24°, za phone/laptop `(0.28,0.38,1)` i FOV 32°. Udaljenost polazi od
+`FRAME_FILL=0.6` i ispravlja odnos tangensa sočiva. To su postojeći parametri
+odobrenog širokog pogleda, a ne brojevi iz tuđe CAD scene.
+
+Predlog P-11 čuva ih kao podrazumevani `hero` na referentnom aspektu 1280/800.
+Ostale tri poze, granice orbita, prekid prelaza i ograničeno širenje FOV-a su
+**nove projektne odluke za pregled**, ne postojeće odobreno ponašanje.
+`three/src/math/MathUtils.js:damp` (134–137) koristi težinu
+`1-exp(-lambda*dt)`; za deterministički QA može se računati ista putanja iz
+fiksnog početnog stanja i ukupnog eksplicitno zadatog vremena.
+
+### F13 — P-10(7) nije zatvoren
+
+Ponovljeni lokalni pokušaj: instalacija zavisnosti i build prolaze, Chromium
+download ističe, pun CI pada na browser setup-u, lokalni push nema credential.
+GitHub veza ima repo read/write pristup, ali to ne popravlja lokalni browser.
+Komande, osnova i ishodi su u [`T-P5-environment.md`](T-P5-environment.md).
+Ovaj nalaz sprečava početak implementacije; ne sprečava objavu planskog predloga.
