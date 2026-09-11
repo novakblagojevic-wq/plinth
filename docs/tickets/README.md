@@ -2,6 +2,14 @@
 
 Every ticket on the §8 ladder leaves three artefacts, all in the repo, none only in a chat:
 
+Current release direction (2026-09-11):
+[`../RELEASE-PLAN.md`](../RELEASE-PLAN.md), recorded in PLINTH_SPEC P-10.
+Supporting findings: [`RELEASE-PLAN-research.md`](RELEASE-PLAN-research.md).
+T-P3 v2 is merged; the next deliverable is a separate T-P5 research pass.
+The remaining order is T-P5 → T-P6 → T-P7 → T-P9 core → conditional T-P8
+→ T-P10 → T-P11. See P-10 for the mobile/video ownership split; these links
+do not replace individual ticket research, acceptance or fresh review.
+
 | Artefact | Where | Who writes it |
 |---|---|---|
 | Research pass (§2.7) | `docs/tickets/T-Pn-research.md` — or the "Research pass" section at the top of `T-Pn.md` when the same planning session writes both | a read-only session, before the ticket |
