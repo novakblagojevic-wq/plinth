@@ -108,16 +108,31 @@ numbered F1..Fn and cited by number in the ticket and in the PR's
 | T-P6 | Output frame/background; desktop and mobile panel; four composed looks, image-preserving reset, Advanced controls | §4.2–§4.5, §4.9, P-4/P-10 | shared in-memory settings; no URL persistence yet |
 | T-P7 | PNG: offscreen RT, `setPixelRatio(1)`, 1×/2×/3×, alpha, naming and dimension/diff tests | §4.6, P-10 | complete desktop/mobile download; dimensions/threshold require a ruling first |
 | T-P9 core | Validated/versioned URL hash state without image bytes, non-video shortcuts, remaining mobile polish | §4.8, §4.9, P-10 | **before video**; video-dependent integration assigned to T-P8 |
-| T-P8 | Virtual clock, 3 motion presets, MP4 + researched fallback, progress, video shortcuts/capability messages; muxer licence | §4.7–§4.9, P-10 | conditional; video export remains the first cut, chosen by Novak |
+| T-P8a | Virtual clock, all 3 motion presets, preview controls, Space and validated motion-state integration | §4.7–§4.8, §6, P-10 | required even for PNG-only; includes `float` for the unchanged release gate |
+| T-P8b | MP4 + researched fallback, progress, Shift+V/export capability messages; muxer licence | §4.7–§4.9, P-10 | conditional; only video export is the first cut, chosen by Novak |
 | T-P10 | Release pass: Gate-5b segment + 5-run report, no-network assertion, README with GIF, OG tags, favicon, submission fields; report committed to `reports/` | §2, §6, §7 | never cut |
-| T-P11 | Fixups from fresh-context review of T-P7–T-P10 | — | 3-day buffer |
+| T-P11 | Fixups from fresh-context review of T-P7–T-P10 | — | September 26–28; full 3-day buffer before submission |
 
 Targets and finding ownership are in `docs/RELEASE-PLAN.md`. T-P5/T-P6
 start performance observations; T-P10 retains the full measured gate.
+T-P8a/T-P8b each require separate research, ticket, PR and fresh review.
+Target T-P10 on September 24–25, T-P11 on September 26–28 and submission
+only after blocking findings close and affected checks pass on the final
+commit. September 29–30 is contingency, not planned feature work.
 On Novak, not on an agent: the first PG bless (after T-P5 or whenever the
 contact sheet reads right), the video cut decision, the product name
 (§10), merging and the submission itself. Resolve the hinge-control
 question before the corresponding panel control is built.
+
+**Before T-P5 implementation:** complete P-10(7)'s environment gate,
+scheduled for September 11. Read-only research may proceed first. Record
+the selected surface, then-current main SHA, scoped Git access and passed
+`npm ci`, `npm run ci` and build. An Astra route requires separate
+authorized tooling work for a T-P5 profile derived from the approved
+ticket write set and verified base/candidate checks. This gate is still
+pending: local Chromium is absent and a push dry run failed for missing
+Git authentication. Neither the planning PR's CI nor its docs-only
+exception counts as this gate. See RELEASE-PLAN for its complete exit.
 
 ## 6. Portfolio rules that apply here as they apply to Gearfall
 

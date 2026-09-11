@@ -6,8 +6,11 @@ Current release direction (2026-09-11):
 [`../RELEASE-PLAN.md`](../RELEASE-PLAN.md), recorded in PLINTH_SPEC P-10.
 Supporting findings: [`RELEASE-PLAN-research.md`](RELEASE-PLAN-research.md).
 T-P3 v2 is merged; the next deliverable is a separate T-P5 research pass.
-The remaining order is T-P5 → T-P6 → T-P7 → T-P9 core → conditional T-P8
-→ T-P10 → T-P11. See P-10 for the mobile/video ownership split; these links
+The remaining order is T-P5 → T-P6 → T-P7 → T-P9 core → required T-P8a
+motion → conditional T-P8b video export → T-P10 → T-P11. T-P8a/T-P8b
+replace the combined T-P8, each with its own research, ticket, PR and
+fresh review. Complete P-10(7)'s environment gate before T-P5 implementation;
+read-only research may proceed first. See P-10 for the ownership split; these links
 do not replace individual ticket research, acceptance or fresh review.
 
 | Artefact | Where | Who writes it |
