@@ -1,6 +1,8 @@
 # T-P6/T-P7 — konkretan predlog odluka za P-13
 
-Status: **PREDLOG ZA NOVAKA, NIJE USVOJENA SPECIFIKACIJA.**
+Status: **NOVAK JE ODOBRIO ODLUKE 1–6 u nastavnom razgovoru.**
+Odobreni tekst je prenet u zaseban P-13 spec commit; planning PR još nije spojen.
+Donji tekst čuva originalni predlog i značenje odobrenja.
 Autor: Codex. Osnova aplikacije: e98c99e680f2692d4c6e4b2003f1d83d120bc005.
 Dokazi: T-P6-research F2–F8/F11/F15 i tri vrste numeričkih proba u
 `docs/probes/T-P6-alpha-findings.md`. Ovaj dokument ne otvara build ticket.

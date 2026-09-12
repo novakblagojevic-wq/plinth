@@ -280,3 +280,10 @@ White/clear na 0.5 jasno daje 186,186,186,128 pre korekcije naspram očekivanih
 ili produkciona implementacija nisu proglašeni završenim. Tehnički predlog za
 zajednički preview/export alpha ugovor i preostala ograničenja nalaze se u
 završnoj sekciji `docs/probes/T-P6-alpha-findings.md`. P-10(4) ostaje otvoren.
+
+### Usvajanje odluka i tiket
+
+Novak je izričito odobrio odluke 1–6 predloga na da8c54c. P-13 je dodat
+u zasebnom spec-only commitu, a T-P6.md sastavljen kao poseban docs korak.
+Normativne odluke su zapisane; production acceptance i zaseban review nisu
+ovim zatvoreni. Planning paket još nije na main-u i build nije pokrenut.
