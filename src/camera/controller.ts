@@ -12,6 +12,10 @@ export interface PoseController {
 const PIXELS_PER_RADIAN = 240;
 
 export function createPoseController(canvas: HTMLCanvasElement, target: PoseControllerTarget, redraw: () => void): PoseController {
+  // Reserve gestures before pointerdown; capture alone cannot stop native scrolling.
+  const touchAction = canvas.style.getPropertyValue('touch-action');
+  const touchActionPriority = canvas.style.getPropertyPriority('touch-action');
+  canvas.style.setProperty('touch-action', 'none');
   let pointer: number | null = null;
   let x = 0;
   let y = 0;
@@ -75,7 +79,10 @@ export function createPoseController(canvas: HTMLCanvasElement, target: PoseCont
   return {
     start() { previousTimestamp = null; schedule(); },
     dispose() {
+      if (disposed) return;
       disposed = true;
+      if (touchAction) canvas.style.setProperty('touch-action', touchAction, touchActionPriority);
+      else canvas.style.removeProperty('touch-action');
       cancel();
       if (pointer !== null && canvas.hasPointerCapture(pointer)) canvas.releasePointerCapture(pointer);
       pointer = null;

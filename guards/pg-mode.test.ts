@@ -360,3 +360,40 @@ it('T-P5: inherited capture names fall back to the default PG dimensions', async
     expect(await page.evaluate(() => [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height])).toEqual([1280, 800]);
   } finally { await page.close(); }
 });
+
+
+it('T-P5 keeps a real mobile touch drag alive through all moves', async () => {
+  const context = await browser.newContext({
+    viewport: { width: 400, height: 700 }, isMobile: true, hasTouch: true, deviceScaleFactor: 1,
+  });
+  try {
+    const page = await context.newPage();
+    await page.goto(url, { waitUntil: 'load' });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    await page.evaluate(() => {
+      const canvas = document.querySelector<HTMLCanvasElement>('#stage')!;
+      canvas.dataset.touchEvents = '';
+      for (const type of ['pointerdown', 'pointermove', 'pointercancel', 'pointerup']) {
+        canvas.addEventListener(type, (event) => {
+          if ((event as PointerEvent).pointerType === 'touch') canvas.dataset.touchEvents += `${type},`;
+        });
+      }
+    });
+    const session = await context.newCDPSession(page);
+    await session.send('Input.dispatchTouchEvent', { type: 'touchStart', touchPoints: [{ x: 200, y: 450 }] });
+    for (let step = 1; step <= 8; step++) {
+      await session.send('Input.dispatchTouchEvent', {
+        type: 'touchMove', touchPoints: [{ x: 200, y: 450 - step * 30 }],
+      });
+    }
+    await session.send('Input.dispatchTouchEvent', { type: 'touchEnd', touchPoints: [] });
+    const result = await page.evaluate(() => ({
+      events: document.querySelector<HTMLCanvasElement>('#stage')!.dataset.touchEvents!.split(',').filter(Boolean),
+      pose: window.__plinth.getPose(),
+    }));
+    expect(result.events).toEqual(['pointerdown', ...Array<string>(8).fill('pointermove'), 'pointerup']);
+    expect(result.pose).toBeNull();
+  } finally {
+    await context.close();
+  }
+});

@@ -286,3 +286,27 @@ Lokalno: typecheck PASS, svih 78 unit testova PASS, build PASS i provera sintaks
 capture skripte PASS. Browser CI, ispravljeni 45-image artefakt i seeded-failure
 dokaz još nisu ovim zapisom proglašeni PASS-om. F5, nezavisan review, Novakova
 vizuelna potvrda/baseline odluka i zasebno merge odobrenje ostaju obavezni.
+
+
+## PR #13 touch fixup — 2026-09-12
+
+Fresh-context review [nalaz 1](https://github.com/novakblagojevic-wq/plinth/pull/13#pullrequestreview-5187775594)
+reprodukovao je native browser takeover: posle prvog touch pomeraja sledi
+pointercancel. Ovo je korekcija P-11(4)/F6 input lifecycle-a u istom write set-u.
+Kontroler pre gesta postavlja canvas touch-action:none, pamti prethodnu inline
+vrednost i prioritet, vraća ih pri dispose-u i čini ponovljeni dispose bezopasnim.
+PG i dalje ne priključuje kontroler; poze, kamera, senke i capture ostaju isti.
+
+Novi browser guard koristi pravi Chromium touch tok (CDP), mobile 400×700,
+osam vertikalnih pomeraja i touchEnd; zahteva svih osam pointermove događaja,
+pointerup i custom pozu. Unit provere pokrivaju pan-y!important, praznu inline
+vrednost, odjavu i ponovljeni dispose posle priključivanja novog kontrolera.
+Ciljani browser test PASS; kontrolisano uklanjanje touch-action postavljanja
+obara isti test na pointercancel (exit 1). Privremena izmena je vraćena.
+Provera tipova i oba controller unit testa PASS. Puni CI/build i novi PR CI/PG
+rezultati beleže se u PR opisu po završetku; ovaj zapis ih ne proglašava unapred.
+
+U granu je uključen pregledani main 96204cc (PR #12 za uštede) da feature push
+više ne duplira PR provere. Izvorni cloud test 34710668416 dokazuje samo stari
+293ee82 kandidat; nije dokaz novog head-a. Novi fresh-context review i Novakova
+vizuelna/baseline odluka ostaju potrebni. Autor fixup-a: Codex.

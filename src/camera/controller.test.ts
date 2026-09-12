@@ -9,6 +9,13 @@ class FakeTarget {
   emit(type: string, event: Parameters<Listener>[0] = {}): void { for (const listener of this.listeners.get(type) ?? []) listener(event); }
 }
 class FakeCanvas extends FakeTarget {
+  style = {
+    value: '', priority: '',
+    getPropertyValue: () => this.style.value,
+    getPropertyPriority: () => this.style.priority,
+    setProperty: (_name: string, value: string, priority = '') => { this.style.value = value; this.style.priority = priority; },
+    removeProperty: () => { this.style.value = ''; this.style.priority = ''; },
+  };
   captured = new Set<number>();
   setPointerCapture(id: number): void { this.captured.add(id); }
   releasePointerCapture(id: number): void { this.captured.delete(id); }
@@ -31,8 +38,10 @@ describe('T-P5 interactive pose controller', () => {
     const cancelled = vi.fn(); let nextRaf = 0;
     Object.defineProperty(globalThis, 'requestAnimationFrame', { configurable: true, value: () => ++nextRaf });
     Object.defineProperty(globalThis, 'cancelAnimationFrame', { configurable: true, value: cancelled });
+    canvas.style.setProperty('touch-action', 'pan-y', 'important');
     const orbit = vi.fn();
     const controller = createPoseController(canvas as unknown as HTMLCanvasElement, { advance: () => false, orbit }, vi.fn());
+    expect(canvas.style.value).toBe('none');
     controller.start();
     canvas.emit('pointerdown', { pointerId: 3, clientX: 20, clientY: 30 });
     canvas.emit('pointermove', { pointerId: 3, clientX: 20, clientY: 30 });
@@ -46,12 +55,17 @@ describe('T-P5 interactive pose controller', () => {
     expect(canvas.captured.has(4)).toBe(false);
     controller.dispose();
     expect(cancelled).toHaveBeenCalledWith(1);
+    expect(canvas.style.value).toBe('pan-y');
+    expect(canvas.style.priority).toBe('important');
     // Reattaching after disposal leaves exactly one live listener set.
     const second = createPoseController(canvas as unknown as HTMLCanvasElement, { advance: () => false, orbit }, vi.fn());
     canvas.emit('pointerdown', { pointerId: 3, clientX: 1, clientY: 1 });
     canvas.emit('pointermove', { pointerId: 3, clientX: 2, clientY: 2 });
     expect(orbit).toHaveBeenCalledTimes(2);
+    controller.dispose(); // A stale, already disposed owner cannot reset the new owner.
+    expect(canvas.style.value).toBe('none');
     second.dispose();
+    expect(canvas.style.value).toBe('pan-y');
   });
 
   it('resets the first visible rAF timestamp so a hidden interval cannot become a transition jump', () => {
@@ -72,5 +86,6 @@ describe('T-P5 interactive pose controller', () => {
     expect(advance).toHaveBeenCalledTimes(2);
     expect(advance).toHaveBeenLastCalledWith(0.016);
     controller.dispose();
+    expect(canvas.style.value).toBe('');
   });
 });
