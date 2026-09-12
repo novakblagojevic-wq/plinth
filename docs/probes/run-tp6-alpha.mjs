@@ -17,10 +17,12 @@ try {
  page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
  await page.goto(new URL('docs/probes/tp6-alpha.html',url).href);
  await page.waitForFunction(()=>typeof window.runProbe==='function');
- const alphaAware=process.argv.includes('--alpha-aware');
- const report=await page.evaluate(flag=>window.runProbe(flag),alphaAware);
+ const png=process.argv.includes('--png');
+ const alphaAware=png||process.argv.includes('--alpha-aware');
+ let report=await page.evaluate(({alphaAware,png})=>window.runProbe(alphaAware,png),{alphaAware,png});
+ if(png){const {measurePNG}=await import('./tp6-png.mjs');report=await measurePNG(page,report);}
  Object.assign(report,{errors,browser:browser.version(),node:process.version,platform:process.platform,base:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()});
- writeFileSync(new URL(alphaAware?'tp6-alpha-aware-results.json':'tp6-alpha-results.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
+ writeFileSync(new URL(png?'tp6-png-results.json':alphaAware?'tp6-alpha-aware-results.json':'tp6-alpha-results.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({cases:report.results.length,errors}));
- if(errors.length||report.results.some(r=>r.glError))process.exitCode=1;
+ if(errors.length||report.results.some(r=>r.glError)||report.passed===false)process.exitCode=1;
 } finally {await browser?.close();await server.close();}

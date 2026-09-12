@@ -8,8 +8,8 @@ import { createStage } from '/src/scene.ts';
 import { createStudio } from '/src/scene/studio.ts';
 import { createPipeline } from '/src/scene/pipeline.ts';
 const W=320,H=200;
-window.runProbe=async(alphaAware=false)=>{
- const results=[];
+window.runProbe=async(alphaAware=false,capture=false)=>{
+ const results=[],framesForPNG=[];
  for(const msaa of [false,true]){
   const renderer=new WebGLRenderer({canvas:document.querySelector('canvas'),alpha:true,antialias:false,preserveDrawingBuffer:true});
   renderer.setPixelRatio(1);renderer.setSize(W,H,false);
@@ -47,6 +47,7 @@ window.runProbe=async(alphaAware=false)=>{
     const p=stage.getRig().screen.getWorldPosition(new Vector3()).project(stage.camera);
     const x=Math.floor((p.x+1)*W/2),y=Math.floor((p.y+1)*H/2),i=(y*W+x)*4;
     frames[background]=off;
+    if(capture&&background==='transparent')framesForPNG.push({msaa,device,tone,pixels:Array.from(off)});
     results.push({msaa,device,tone,background,screenCentre:Array.from(off.slice(i,i+4)),corner:Array.from(off.slice(0,4)),previewOffscreen:{maxChannelError:max,meanChannelError:total/off.length,differingChannels:diff},alpha:{empty,opaque,partial,rgbAboveAlpha},glError:gl.getError()});
    }
    // Compare two explicit alpha interpretations; this is measurement, not a pass threshold.
@@ -61,6 +62,6 @@ window.runProbe=async(alphaAware=false)=>{
   }
   quad.dispose();copy.dispose();target.dispose();pipeline.dispose();studio.dispose();renderer.dispose();
  }
- return {alphaAware,size:[W,H],purpose:'Isolated alpha/color measurement; not application acceptance or export implementation',results};
+ return {alphaAware,size:[W,H],purpose:'Isolated alpha/color measurement; not application acceptance or export implementation',results,...(capture?{framesForPNG}:{})};
 };
 </script>

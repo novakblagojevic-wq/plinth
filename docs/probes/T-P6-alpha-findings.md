@@ -115,3 +115,62 @@ pravilo za RGB/alpha je zadovoljeno i opaque put sačuvan u ovoj matrici;
 nezavisan referentni oracle za rubove, seeded greške i stvarni PNG/preview
 roundtrip još su potrebni. Posebno razlikovati promenu edge detection-a zbog
 pozadine od neispravne alpha reprezentacije. Ostali gate-ovi ostaju navedeni.
+
+## PNG transport — naknadno završena numerička proba
+
+Komanda `node docs/probes/run-tp6-alpha.mjs --png` ponovo renderuje malu
+matricu na istom main-u, sa eksperimentalnim alpha-aware offscreen putem.
+Rezultat je `tp6-png-results.json`; pomoćni modul je `tp6-png.mjs`.
+Prethodni navodi „PNG nije testiran” opisuju ranije dve probe; ova dopuna
+zatvara **transport bytes → PNG → browser decode/composite**, ne ceo F15.
+
+Metod:
+- Osam transparentnih RGBA8 readback kadrova, phone/laptop × AgX/ACES ×
+  SMAA/MSAA, 320×200/DPR1/soft-studio; poređenje koristi isti foreground.
+- Eksplicitan bottom-up → top-down flip, premultiplied → straight konverzija,
+  RGB=0 kada je alpha=0. Postojeći development `pngjs@7.0.0` enkodira stvarne
+  PNG bajtove u memoriji i nezavisno dekodira radi byte-for-byte provere.
+- Chromium učitava PNG preko createImageBitmap i kompozituje Canvas2D/sRGB
+  preko crne, bele i obojene šahovnice. Numerički oracle polazi od originalnog
+  premultiplied readback-a i eksplicitne source-over jednačine, nikad od
+  konvertovanih ili dekodiranih PNG vrednosti.
+- Dodatni asimetrični 3×2 uzorak ima ručno navedene očekivane straight RGBA
+  vrednosti, uključujući nultu, delimičnu i punu alpha. Tri namerne greške
+  proveravaju izostavljenu konverziju, izostavljen flip i alpha postavljenu na 255.
+- Pre izvršenja izabran istraživački maksimum 2 byte vrednosti po RGB kanalu
+  za konverziono zaokruživanje i Canvas2D kompoziciju. To nije novi PG ili
+  normativni export prag. PNG bytes i dimenzije zahtevaju tačnu jednakost.
+
+Rezultat, Linux/Chromium 153.0.8010.12/SwiftShader, Node 24.19.0:
+
+| Provera | Rezultat |
+|---|---|
+| Osam PNG zapisa | Svi lossless prema straight ulazu, tačno 320×200 |
+| Kompozicija preko crne/bele | Max 0 u svih osam kadrova |
+| Kompozicija preko obojene šahovnice | Max 1/255 u svih osam kadrova |
+| Ručno zadati 3×2 oracle | Konverzija tačno jednaka literalima; kompozicija max 1/255 |
+| Bez unpremultiply | Otkriveno, max 64/255 |
+| Bez flip-a | Otkriveno, max 224/255 |
+| Izgubljena alpha | Otkriveno, max 255/255 |
+| Page/console/WebGL greške | Nijedna; komanda exit 0 |
+
+PNG hash i broj bajtova svakog kadra ostaju u JSON-u; ovo nisu kandidatski
+baseline-i niti slike za vlasnički bless. Nije rađen ljudski vizuelni pregled.
+Nisu pokretani puni CI, novi PG capture ili ručni GitHub Actions dispatch.
+Promene su istraživački docs/harness, bez production/spec/fixture izmene.
+
+**Granica zaključka:** PNG transport ne dodaje značajnu grešku već renderovanom
+foreground-u u ovoj matrici. Ne dokazuje ispravnost nastanka tog foreground-a:
+nezavisna referenca za alpha-aware SMAA interpolaciju, screen color/double-tone-map
+negativna proba, sve scene/uređaji, velike izlazne dimenzije i mobilni GPU ostaju
+neprovereni. CPU pngjs ovde je istraživački enkoder, nije izbor biblioteke za
+product runtime; browser encoder/download i njegovi failure/restore putevi su T-P7.
+Ne porediti low-alpha straight RGB direktno sa premultiplied preview bajtovima;
+konverzija može uvećati kvantizaciju nevidljivih boja. Byte-lossless PNG ne vraća
+preciznost već izgubljenu u RGBA8 readback-u.
+
+Sledeći konkretan tehnički gate je kontrolisani SMAA blend oracle sa poznatim
+RGBA susedima/težinama i neizmenjenim opaque rezultatom, pa predlog jedinstvene
+preview/export putanje. Dimenzije, failure policy, output padding i hinge iz
+F2/F6–F8/F11 još zahtevaju zaseban normativni predlog. P-10(4) nije zatvoren;
+T-P6 panel nije implementiran ovom probom.

@@ -258,3 +258,13 @@ Eksperiment uklanja RGB>alpha slučajeve i čuva opaque put unutar 1/255, ali
 poređenje kompozicije preko pozadina još nije zatvoreno. To nije production
 fix, PNG implementation ili usvojeni prag. P-10(4) ostaje otvoren; ne počinjati
 pogođenu T-P6 implementaciju pre razrešenja preostalih alpha/color/PNG odluka.
+
+### Dopuna F8/F15 — PNG transport izmeren
+
+`docs/probes/tp6-png-results.json` i završna sekcija alpha findings zapisa sada
+sadrže stvarni PNG roundtrip na osam alpha-aware/MSAA transparent kadrova.
+Lossless bajtovi i dimenzije su potvrđeni; browser kompozicija istog foreground-a
+preko crne/bele ima max 0, preko obojene šahovnice max 1/255. Nezavisni ručno
+zadati uzorak prolazi, a izostavljeni flip, pogrešna alpha reprezentacija i
+izgubljena alpha bivaju otkriveni. To zatvara transportnu probu, ne SMAA
+rendering oracle ili normativni export prag. Preostale odluke i P-10(4) važe.

@@ -1,0 +1,387 @@
+{
+  "purpose": "PNG byte transport and same-foreground compositing only; not SMAA correctness, production export or mobile acceptance",
+  "alphaAware": true,
+  "size": [
+    320,
+    200
+  ],
+  "criterion": "Lossless PNG bytes and exact dimensions; same-foreground sRGB composition <=2 byte values/channel (conversion quantization plus canvas rounding), alpha-zero RGB normalized to zero. Research criterion, not adopted spec.",
+  "conversionMatchesLiteral": true,
+  "synthetic": {
+    "pngBytes": 90,
+    "sha256": "0e7da9beadf2d6f5efdb6691cd04a7f664d8eca49d2aa126e7dd9b6623905ab7",
+    "dimensions": [
+      3,
+      2
+    ],
+    "losslessBytes": true,
+    "measurements": [
+      {
+        "background": "black",
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "channelsOver2": 0
+      },
+      {
+        "background": "white",
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "channelsOver2": 0
+      },
+      {
+        "background": "checker",
+        "maxChannelError": 1,
+        "meanChannelError": 0.2222222222222222,
+        "channelsOver2": 0
+      }
+    ],
+    "passed": true
+  },
+  "seeds": [
+    {
+      "name": "missing-unpremultiply",
+      "rejected": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 64,
+          "meanChannelError": 13.166666666666666,
+          "channelsOver2": 6
+        },
+        {
+          "background": "white",
+          "maxChannelError": 64,
+          "meanChannelError": 13.166666666666666,
+          "channelsOver2": 6
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 64,
+          "meanChannelError": 13.38888888888889,
+          "channelsOver2": 6
+        }
+      ]
+    },
+    {
+      "name": "missing-flip",
+      "rejected": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 173,
+          "meanChannelError": 66.22222222222223,
+          "channelsOver2": 14
+        },
+        {
+          "background": "white",
+          "maxChannelError": 224,
+          "meanChannelError": 89.55555555555556,
+          "channelsOver2": 18
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 112,
+          "meanChannelError": 58.55555555555556,
+          "channelsOver2": 18
+        }
+      ]
+    },
+    {
+      "name": "lost-alpha",
+      "rejected": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 191,
+          "meanChannelError": 38.666666666666664,
+          "channelsOver2": 6
+        },
+        {
+          "background": "white",
+          "maxChannelError": 255,
+          "meanChannelError": 106.33333333333333,
+          "channelsOver2": 12
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 173,
+          "meanChannelError": 59.888888888888886,
+          "channelsOver2": 15
+        }
+      ]
+    }
+  ],
+  "renderErrors": [],
+  "results": [
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "pngBytes": 3657,
+      "sha256": "147752a94431c2537feedb3a494ac741e8d4f30f55fbdd682f11daa227808480",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.001546875,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "pngBytes": 3741,
+      "sha256": "4fb944a137515ea932a81089e4118e9ff17d83d15c3b3ae8b6fc6048dc9120e9",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.001546875,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "pngBytes": 13104,
+      "sha256": "3297c884a0abf816fe079b9534abb467e2499e3a6ea120b1c7f67380e3f98850",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.0170625,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "pngBytes": 13871,
+      "sha256": "5797ede88465d7afbc732cee45e379dff066159257fcea6fba66746ae9b037f8",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.0170625,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "pngBytes": 2813,
+      "sha256": "2f541eac2f76c18f2bd0f368071bcb1069266ebc6574f5f5ef02f7214847336b",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.001375,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "pngBytes": 2865,
+      "sha256": "967d886909d381f4a95aa54668714448f7a1fa74d032890cf32ef19cf69f8c4a",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.001375,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "pngBytes": 13305,
+      "sha256": "acdd00a05492c7c93a83b5db27527b1d522b9234994216ede8bef1c67da58b0a",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.01633333333333333,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "pngBytes": 13606,
+      "sha256": "8706301b36951d289913f87092db89262932dff3a57f5e536e80875d7c1f806c",
+      "dimensions": [
+        320,
+        200
+      ],
+      "losslessBytes": true,
+      "measurements": [
+        {
+          "background": "black",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "white",
+          "maxChannelError": 0,
+          "meanChannelError": 0,
+          "channelsOver2": 0
+        },
+        {
+          "background": "checker",
+          "maxChannelError": 1,
+          "meanChannelError": 0.01633333333333333,
+          "channelsOver2": 0
+        }
+      ],
+      "passed": true
+    }
+  ],
+  "passed": true,
+  "errors": [],
+  "browser": "153.0.8010.12",
+  "node": "v24.19.0",
+  "platform": "linux",
+  "base": "e98c99e680f2692d4c6e4b2003f1d83d120bc005"
+}
