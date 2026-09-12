@@ -466,6 +466,20 @@ Most Creative weakens. Do not cut T-P4 or T-P10 under any schedule.
      ostaju; P-10(7), nezavisan review, Novakova PG potvrda i merge nisu ovim
      predlogom zamenjeni ili odobreni.
 
+- P-12 — Numerički neizvodljiv aspekt (2026-09-12; T-P5, F14;
+  `docs/tickets/T-P5-research.md`; Novak je odobrio konkretan tekst u razgovoru):
+  Ulazni aspekt mora biti pozitivan konačan broj. Uslovi uokviravanja iz
+  P-11(3), uključujući NDC marginu, near/far, propisani FOV, očuvanje slike
+  i minimalnu referentnu udaljenost, ostaju obavezni. Ako se za zahtev ne
+  može izračunati konačna kamera i validna projekcija u korišćenoj IEEE-754
+  aritmetici, zahtev se odbija uz grešku pre bilo kakve promene vidljivog
+  stanja. Ne stezati, zaokruživati ili menjati traženi aspekt da bi prošao.
+  Ograničen broj iteracija ili sporo izvršavanje algoritma sami po sebi nisu
+  numerička neizvodljivost. Svih pet propisanih izlaznih aspekata ostaje
+  obavezno podržano. Pri neuspehu postojećeg Stage setter-a sačuvati prethodnu
+  kameru, pozu, uređaj i sliku. Ova dopuna ne određuje PNG dimenzije,
+  maksimalnu veličinu izvoza ili kasnije T-P6/T-P7 odluke.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
 - Whether `laptop` hinge angle is a slider or two fixed values (decide at T-P2 by eye).
