@@ -241,3 +241,20 @@ Provereno 2026-09-12; živi docs ne zamenjuju pinovani izvor:
   stvarno instalirani three@0.185.1, ne pretpostavku iz starog vodiča.
 - [W3C APG modal dialog](https://www.w3.org/WAI/ARIA/apg/patterns/dialog-modal/):
   fokus, Escape i inertna pozadina ako je mobilni panel modalni.
+
+
+## Dopuna posle baseline merge-a i tehničkih proba
+
+Main je sada e98c99e, posle baseline PR #15. F13 navod o nedostajućem
+baseline commitu je istorijski: 45 odobrenih referenci je upisano, a prvih
+20 automatskih poređenja prošlo je sa 0 različitih piksela. Named 25 slika
+jesu sačuvane reference, ali još nemaju automatski diff loop.
+
+[Izolovane alpha/color probe](../probes/T-P6-alpha-findings.md), ponovljivi
+harness i dva JSON rezultata dokumentuju F15: postojeći SMAA na transparent
+rubovima ne čuva očekivani premultiplied RGB/alpha odnos. Osnovna proba i
+eksperimentalna alpha-aware varijanta svaka imaju 56 merenja bez WebGL grešaka.
+Eksperiment uklanja RGB>alpha slučajeve i čuva opaque put unutar 1/255, ali
+poređenje kompozicije preko pozadina još nije zatvoreno. To nije production
+fix, PNG implementation ili usvojeni prag. P-10(4) ostaje otvoren; ne počinjati
+pogođenu T-P6 implementaciju pre razrešenja preostalih alpha/color/PNG odluka.

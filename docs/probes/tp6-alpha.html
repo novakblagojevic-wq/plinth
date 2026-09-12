@@ -1,0 +1,66 @@
+<!doctype html><meta charset="utf-8"><title>T-P6 isolated alpha probe</title>
+<canvas id="probe"></canvas>
+<script type="module">
+import { WebGLRenderer, WebGLRenderTarget, ShaderMaterial, NoBlending, Color, Vector3 } from 'three';
+import { FullScreenQuad } from 'three/addons/postprocessing/Pass.js';
+import { CopyShader } from 'three/addons/shaders/CopyShader.js';
+import { createStage } from '/src/scene.ts';
+import { createStudio } from '/src/scene/studio.ts';
+import { createPipeline } from '/src/scene/pipeline.ts';
+const W=320,H=200;
+window.runProbe=async(alphaAware=false)=>{
+ const results=[];
+ for(const msaa of [false,true]){
+  const renderer=new WebGLRenderer({canvas:document.querySelector('canvas'),alpha:true,antialias:false,preserveDrawingBuffer:true});
+  renderer.setPixelRatio(1);renderer.setSize(W,H,false);
+  const stage=createStage('phone','soft-studio',W/H);
+  const studio=createStudio(renderer,stage,{msaa});studio.setSize(W,H,1);await studio.ready;
+  const pipeline=createPipeline(renderer,stage.scene,stage.camera,{msaa});pipeline.setSize(W,H,1);await pipeline.ready;
+  // Experimental, isolated patch only; production source and node_modules stay unchanged.
+  if(alphaAware&&!msaa){
+   const material=pipeline.composer.passes[1]._materialBlend;
+   material.fragmentShader=material.fragmentShader
+    .replace('C.xyz = pow(C.xyz, vec3(2.2));','C.xyz = pow(C.xyz / max(C.a, 1e-6), vec3(2.2)) * C.a;')
+    .replace('Cop.xyz = pow(Cop.xyz, vec3(2.2));','Cop.xyz = pow(Cop.xyz / max(Cop.a, 1e-6), vec3(2.2)) * Cop.a;')
+    .replace('mixed.xyz = pow(mixed.xyz, vec3(1.0 / 2.2));','mixed.xyz = pow(mixed.xyz / max(mixed.a, 1e-6), vec3(1.0 / 2.2)) * mixed.a;');
+   material.needsUpdate=true;
+  }
+  const target=new WebGLRenderTarget(W,H,{depthBuffer:false});
+  const copy=new ShaderMaterial({uniforms:{tDiffuse:{value:null},opacity:{value:1}},vertexShader:CopyShader.vertexShader,fragmentShader:CopyShader.fragmentShader,toneMapped:false,blending:NoBlending});
+  const quad=new FullScreenQuad(copy);
+  const gl=renderer.getContext();
+  for(const device of ['phone','laptop'])for(const tone of ['agx','aces']){
+   stage.setDevice(device);stage.getRig().setScreenColor('#808080');studio.setToneMapping(tone);
+   const frames={};
+   for(const background of ['transparent','black','white']){
+    stage.scene.background=background==='transparent'?null:new Color(background==='black'?0x000000:0xffffff);
+    renderer.setClearColor(0x000000,background==='transparent'?0:1);
+    renderer.setRenderTarget(null);studio.render();
+    const screen=new Uint8Array(W*H*4);gl.readPixels(0,0,W,H,gl.RGBA,gl.UNSIGNED_BYTE,screen);
+    pipeline.composer.renderToScreen=false;pipeline.render();
+    copy.uniforms.tDiffuse.value=pipeline.composer.readBuffer.texture;
+    renderer.setRenderTarget(target);renderer.clear();quad.render(renderer);
+    const off=new Uint8Array(W*H*4);renderer.readRenderTargetPixels(target,0,0,W,H,off);renderer.setRenderTarget(null);
+    let max=0,total=0,diff=0,partial=0,empty=0,opaque=0,rgbAboveAlpha=0;
+    for(let i=0;i<off.length;i++){const e=Math.abs(off[i]-screen[i]);max=Math.max(max,e);total+=e;if(e)diff++;}
+    for(let i=0;i<off.length;i+=4){let a=off[i+3];if(a===0)empty++;else if(a===255)opaque++;else partial++;if(Math.max(off[i],off[i+1],off[i+2])>a+1)rgbAboveAlpha++;}
+    const p=stage.getRig().screen.getWorldPosition(new Vector3()).project(stage.camera);
+    const x=Math.floor((p.x+1)*W/2),y=Math.floor((p.y+1)*H/2),i=(y*W+x)*4;
+    frames[background]=off;
+    results.push({msaa,device,tone,background,screenCentre:Array.from(off.slice(i,i+4)),corner:Array.from(off.slice(0,4)),previewOffscreen:{maxChannelError:max,meanChannelError:total/off.length,differingChannels:diff},alpha:{empty,opaque,partial,rgbAboveAlpha},glError:gl.getError()});
+   }
+   // Compare two explicit alpha interpretations; this is measurement, not a pass threshold.
+   for(const interpretation of ['straight','premultiplied'])for(const bg of ['black','white']){
+    const a=frames.transparent,b=frames[bg];let total=0,max=0;const base=bg==='white'?255:0;
+    for(let i=0;i<a.length;i+=4)for(let c=0;c<3;c++){
+     const alpha=a[i+3]/255;const v=(interpretation==='straight'?a[i+c]*alpha:a[i+c])+base*(1-alpha);
+     const e=Math.abs(Math.min(255,v)-b[i+c]);total+=e;max=Math.max(max,e);
+    }
+    results.push({msaa,device,tone,compositeOver:bg,interpretation,meanChannelError:total/(W*H*3),maxChannelError:max});
+   }
+  }
+  quad.dispose();copy.dispose();target.dispose();pipeline.dispose();studio.dispose();renderer.dispose();
+ }
+ return {alphaAware,size:[W,H],purpose:'Isolated alpha/color measurement; not application acceptance or export implementation',results};
+};
+</script>

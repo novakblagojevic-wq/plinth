@@ -1,0 +1,1022 @@
+{
+  "size": [
+    320,
+    200
+  ],
+  "purpose": "Isolated alpha/color measurement; not application acceptance or export implementation",
+  "results": [
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "background": "transparent",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.0001796875,
+        "differingChannels": 46
+      },
+      "alpha": {
+        "empty": 58321,
+        "opaque": 5322,
+        "partial": 357,
+        "rgbAboveAlpha": 123
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "background": "black",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00014453125,
+        "differingChannels": 37
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "background": "white",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00020703125,
+        "differingChannels": 53
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.20180749591503275,
+      "maxChannelError": 77.46666666666667
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.0776699754901962,
+      "maxChannelError": 37.87450980392154
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.08754166666666667,
+      "maxChannelError": 67
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "background": "transparent",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00017578125,
+        "differingChannels": 45
+      },
+      "alpha": {
+        "empty": 58321,
+        "opaque": 5322,
+        "partial": 357,
+        "rgbAboveAlpha": 158
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "background": "black",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.000140625,
+        "differingChannels": 36
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "background": "white",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.000171875,
+        "differingChannels": 44
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.22789734477124207,
+      "maxChannelError": 87.52941176470588
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.07797344771241829,
+      "maxChannelError": 32.117647058823536
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": false,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.08278645833333333,
+      "maxChannelError": 56
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "transparent",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00044921875,
+        "differingChannels": 115
+      },
+      "alpha": {
+        "empty": 44921,
+        "opaque": 16427,
+        "partial": 2652,
+        "rgbAboveAlpha": 256
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "black",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.0003984375,
+        "differingChannels": 102
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "white",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.0003515625,
+        "differingChannels": 90
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.43199981617647065,
+      "maxChannelError": 82.7921568627451
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.11475684232026141,
+      "maxChannelError": 42.105882352941194
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.23601041666666667,
+      "maxChannelError": 58.99999999999997
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "transparent",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00053515625,
+        "differingChannels": 137
+      },
+      "alpha": {
+        "empty": 44921,
+        "opaque": 16427,
+        "partial": 2652,
+        "rgbAboveAlpha": 306
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "black",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.000484375,
+        "differingChannels": 124
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "white",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 1,
+        "meanChannelError": 0.00040234375,
+        "differingChannels": 103
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.4864720588235291,
+      "maxChannelError": 90.91764705882352
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.126420036764706,
+      "maxChannelError": 40.572549019607834
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": false,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.238484375,
+      "maxChannelError": 70
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "background": "transparent",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 58335,
+        "opaque": 5392,
+        "partial": 273,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "background": "black",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "background": "white",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.12441417483660104,
+      "maxChannelError": 47.811764705882354
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.12467459150326768,
+      "maxChannelError": 48.811764705882354
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.0012083333333333375,
+      "maxChannelError": 1
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "background": "transparent",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 58335,
+        "opaque": 5392,
+        "partial": 273,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "background": "black",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "background": "white",
+      "screenCentre": [
+        135,
+        135,
+        136,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.14044119689542545,
+      "maxChannelError": 54.286274509803924
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.1408266135620921,
+      "maxChannelError": 54.290196078431364
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": true,
+      "device": "phone",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.0011666666666666702,
+      "maxChannelError": 1.0000000000000284
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "transparent",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 44981,
+        "opaque": 16567,
+        "partial": 2452,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "black",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "background": "white",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.22417387663398625,
+      "maxChannelError": 53.70980392156863
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.22546554330065283,
+      "maxChannelError": 53.709803921568636
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "agx",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.003229166666666702,
+      "maxChannelError": 1.0000000000000284
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "transparent",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        0
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 44981,
+        "opaque": 16567,
+        "partial": 2452,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "black",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        0,
+        0,
+        0,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "background": "white",
+      "screenCentre": [
+        133,
+        133,
+        133,
+        255
+      ],
+      "corner": [
+        255,
+        255,
+        255,
+        255
+      ],
+      "previewOffscreen": {
+        "maxChannelError": 0,
+        "meanChannelError": 0,
+        "differingChannels": 0
+      },
+      "alpha": {
+        "empty": 0,
+        "opaque": 64000,
+        "partial": 0,
+        "rgbAboveAlpha": 0
+      },
+      "glError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "straight",
+      "meanChannelError": 0.2521413602941155,
+      "maxChannelError": 59.23137254901961
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "straight",
+      "meanChannelError": 0.25341740196078205,
+      "maxChannelError": 58.72941176470587
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "black",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0,
+      "maxChannelError": 0
+    },
+    {
+      "msaa": true,
+      "device": "laptop",
+      "tone": "aces",
+      "compositeOver": "white",
+      "interpretation": "premultiplied",
+      "meanChannelError": 0.0033697916666666997,
+      "maxChannelError": 1.0000000000000284
+    }
+  ],
+  "errors": [],
+  "browser": "153.0.8010.12",
+  "node": "v24.19.0",
+  "platform": "linux",
+  "base": "e98c99e680f2692d4c6e4b2003f1d83d120bc005"
+}
