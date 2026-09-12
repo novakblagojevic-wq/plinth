@@ -308,3 +308,55 @@ it('T-P3: failed inputs keep the last image and show a visible error until succe
     expect(await page.locator('#note').innerText()).toBe('');
   } finally { await page.close(); }
 });
+
+// T-P5 additions: named pose and aspect evidence remains deterministic, and PG
+// never starts the interactive controller (there is no input scheduler in PG).
+it('T-P5: named PG poses are immediate, deterministic and expose explicit aspect captures', async () => {
+  const open = async (query: string): Promise<{ pose: string | null; size: number[]; png: Buffer }> => {
+    const page = await browser.newPage({ viewport: { width: 800, height: 1000 }, deviceScaleFactor: 1 });
+    try {
+      await page.goto(`${url}?pg=1&device=tablet&pose=lean&${query}`, { waitUntil: 'load' });
+      await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+      const info = await page.evaluate(() => ({ pose: window.__plinth.getPose(), size: [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height] }));
+      const visible = await page.locator('#stage').evaluate((element) => {
+        const rect = element.getBoundingClientRect();
+        return rect.left >= 0 && rect.top >= 0
+          && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight;
+      });
+      expect(visible, 'T-P5 whole canvas is visible in the browser viewport').toBe(true);
+      const png = await page.locator('#stage').screenshot();
+      const decoded = PNG.sync.read(png);
+      expect([decoded.width, decoded.height]).toEqual([800, 1000]);
+      // NDC ±0.9 leaves the far-left column outside the device. A full screenshot
+      // must retain the same studio sweep there below the old 800px viewport.
+      const at = (x: number, y: number): Buffer => decoded.data.subarray(
+        (y * decoded.width + x) * 4, (y * decoded.width + x) * 4 + 4,
+      );
+      expect(at(8, 992).equals(at(8, 200)), 'portrait bottom contains the studio, not clipped page background').toBe(true);
+      return { ...info, png };
+    } finally { await page.close(); }
+  };
+  const a = await open('capture=portrait');
+  const b = await open('capture=portrait');
+  expect(a.pose).toBe('lean');
+  expect(a.size).toEqual([800, 1000]);
+  expect(a.png.equals(b.png)).toBe(true);
+});
+
+it('T-P5: an invalid pose query falls back to hero without changing PG dimensions', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?pg=1&pose=invalid`, { waitUntil: 'load' });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    expect(await page.evaluate(() => ({ pose: window.__plinth.getPose(), size: [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height] }))).toEqual({ pose: 'hero', size: [1280, 800] });
+  } finally { await page.close(); }
+});
+
+it('T-P5: inherited capture names fall back to the default PG dimensions', async () => {
+  const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
+  try {
+    await page.goto(`${url}?pg=1&capture=toString`, { waitUntil: 'load' });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    expect(await page.evaluate(() => [document.querySelector('canvas')!.width, document.querySelector('canvas')!.height])).toEqual([1280, 800]);
+  } finally { await page.close(); }
+});
