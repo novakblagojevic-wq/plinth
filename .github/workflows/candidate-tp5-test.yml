@@ -1,0 +1,83 @@
+name: Test public T-P5 candidate
+run-name: Plinth · public T-P5 candidate
+on:
+  workflow_dispatch:
+    inputs:
+      packet:
+        description: Public base64 gzip JSON from candidate.py pack; no private data
+        required: true
+        type: string
+permissions:
+  contents: read
+concurrency:
+  group: plinth-public-tp5-candidate
+  cancel-in-progress: false
+jobs:
+  prepare:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 5
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: project
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Validate scope and create immutable candidate (no push)
+        env:
+          CANDIDATE_PACKET: ${{ inputs.packet }}
+        run: python3 tooling/scripts/ci/candidate.py prepare --ticket T-P5 --checkout project --output candidate
+      - uses: actions/upload-artifact@v4
+        with:
+          name: candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: candidate/
+          if-no-files-found: error
+          retention-days: 7
+  test-candidate:
+    needs: prepare
+    runs-on: ubuntu-24.04
+    timeout-minutes: 60
+    env:
+      PLAYWRIGHT_BROWSERS_PATH: /tmp/plinth-candidate-browsers
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tooling
+          persist-credentials: false
+      - uses: actions/setup-node@v4
+        with:
+          node-version: '22'
+          cache: npm
+          cache-dependency-path: tooling/package-lock.json
+      - name: Prepare pinned browser and Linux libraries before project commands
+        working-directory: tooling
+        run: |
+          npm ci --ignore-scripts --no-audit --no-fund
+          npx --no-install playwright install --with-deps chromium
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: project
+          fetch-depth: 0
+          persist-credentials: false
+      - uses: actions/download-artifact@v4
+        with:
+          name: candidate-${{ github.run_id }}-${{ github.run_attempt }}
+          path: candidate
+      - name: Test untouched base then exact candidate
+        run: python3 tooling/scripts/ci/candidate.py test --ticket T-P5 --checkout project --artifact candidate --output candidate-test
+      - name: Upload test evidence
+        if: always()
+        uses: actions/upload-artifact@v4
+        with:
+          name: candidate-test-${{ github.run_id }}-${{ github.run_attempt }}
+          path: candidate-test/
+          if-no-files-found: error
+          retention-days: 7

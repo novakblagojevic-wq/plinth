@@ -148,3 +148,7 @@ playwright-report/
 
 # PG capture candidates (PLINTH_SPEC §7); baselines live in fixtures/pg/
 pg-out/
+
+# Python candidate tooling
+__pycache__/
+*.py[cod]

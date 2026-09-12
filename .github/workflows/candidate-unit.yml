@@ -1,0 +1,17 @@
+name: Candidate protocol tests
+on:
+  pull_request:
+    paths: ['scripts/ci/**', '.github/workflows/candidate-*.yml']
+  push:
+    branches: [main]
+    paths: ['scripts/ci/**', '.github/workflows/candidate-*.yml']
+permissions:
+  contents: read
+jobs:
+  protocol:
+    runs-on: ubuntu-24.04
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          persist-credentials: false
+      - run: python3 -m unittest discover -s scripts/ci/tests -v
