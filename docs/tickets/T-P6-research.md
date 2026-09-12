@@ -268,3 +268,15 @@ preko crne/bele ima max 0, preko obojene šahovnice max 1/255. Nezavisni ručno
 zadati uzorak prolazi, a izostavljeni flip, pogrešna alpha reprezentacija i
 izgubljena alpha bivaju otkriveni. To zatvara transportnu probu, ne SMAA
 rendering oracle ili normativni export prag. Preostale odluke i P-10(4) važe.
+
+### Dopuna F15 — kontrolisani blend uzrok potvrđen
+
+`docs/probes/tp6-blend.html` i `tp6-blend-results.json` izdvajaju pinovani
+SMAA neighborhood shader sa poznatim bojama, alpha i težinama. Korigovani
+shader prolazi svih 128 slučajeva prema nezavisnom scalar oracle-u (max 1/255),
+opaque izlaz je byte-identičan originalu, a original pada u 48 slučajeva.
+White/clear na 0.5 jasno daje 186,186,186,128 pre korekcije naspram očekivanih
+128,128,128,128. Uzrok završnog mešanja time je potvrđen; kompletan rendering
+ili produkciona implementacija nisu proglašeni završenim. Tehnički predlog za
+zajednički preview/export alpha ugovor i preostala ograničenja nalaze se u
+završnoj sekciji `docs/probes/T-P6-alpha-findings.md`. P-10(4) ostaje otvoren.

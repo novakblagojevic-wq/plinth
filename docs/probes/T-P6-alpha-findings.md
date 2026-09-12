@@ -174,3 +174,70 @@ RGBA susedima/težinama i neizmenjenim opaque rezultatom, pa predlog jedinstvene
 preview/export putanje. Dimenzije, failure policy, output padding i hinge iz
 F2/F6–F8/F11 još zahtevaju zaseban normativni predlog. P-10(4) nije zatvoren;
 T-P6 panel nije implementiran ovom probom.
+
+## Kontrolisani SMAA neighborhood blend oracle
+
+Komanda `node docs/probes/run-tp6-alpha.mjs --blend` koristi pinovani
+`SMAABlendShader` direktno, u originalnoj i istoj eksperimentalno korigovanoj
+verziji. Stranica `tp6-blend.html` hrani shader eksplicitnim 3×3 Float32 RGBA
+teksturama, nearest sampling-om i poznatim težinama. Izoluje završno mešanje;
+ne zaobilazi problem proglašavanjem punog SMAA pipeline-a ispravnim.
+
+Matrica: osam parova boja/alpha × četiri smera × težine 0, 0.25, 0.5, 0.75 =
+128 slučajeva, po dva stvarna GPU izvršavanja. Parovi uključuju white/clear,
+clear/red, oba clear, dve opaque boje, opaque grey, dve partial boje, alpha
+1/255 i 2/255, i istu boju sa različitom alpha. Za svaki piksel postoji
+nezavisni CPU oracle iz **straight** ulaznih fixture vrednosti:
+
+- alpha = (1-w) * a0 + w * a1;
+- intenzitet kanala = (1-w) * a0 * c0^2.2 + w * a1 * c1^2.2;
+- premultiplied rezultat = alpha * (intenzitet/alpha)^(1/2.2), odnosno 0
+  kada je alpha=0; zatim byte zaokruživanje.
+
+Gamma 2.2 namerno odgovara postojećem pinned SMAA prostoru interpolacije;
+**nije tvrdnja da je to tačna piecewise sRGB transfer funkcija**. Ovim se
+proverava alpha korekcija uz očuvan postojeći opaque color ugovor, a ne menja
+prostor boje aplikacije. Oracle ne uvozi production konstante niti GLSL izraze.
+Prag je unapred 1/255 po kanalu za GPU/byte zaokruživanje, uz zahtev da se
+originalni neispravljeni shader otkrije kao negativna kontrola.
+
+Rezultat `tp6-blend-results.json`, Linux/Chromium/SwiftShader sa istim pinovima:
+
+| Kontrola | Rezultat |
+|---|---|
+| Korigovani shader prema oracle-u | 128/128 prolazi, max 1/255 |
+| Opaque rezultat prema originalnom shader-u | Max 0; potpuno isti bajtovi |
+| Originalni shader prema alpha oracle-u | 48 slučajeva prelazi prag i pravilno je odbijeno |
+| White/clear, težina 0.5 | Očekivano i korigovano 128,128,128,128; original 186,186,186,128 |
+| Page/console/WebGL greške | Nijedna; komanda exit 0 |
+
+Time je završni SMAA blend uzrok potvrđen kontrolisanim ulazom, odvojeno od
+promene edge detection-a zbog pozadine i od PNG transporta. Ovo nije ljudski
+vizuelni pregled, fresh-context PR review ili production fix.
+
+### Tehnički predlog za sledeći normativni korak
+
+1. Preview i offscreen export treba da dele isti alpha-aware neighborhood
+   blend. Ne ostaviti ispravljeni exporter i neispravljeni preview kao u
+   dijagnostičkoj probi. SMAA ostaje default; MSAA opt-in ostaje.
+2. Zadržati postojeću P-6/P-7 per-material tone mapping / output obradu;
+   ne dodavati globalni OutputPass. Premultiplied RGBA ostaje render ugovor;
+   PNG dobija straight RGBA sa eksplicitnim flip-om i RGB=0 za alpha=0.
+3. Razdvojiti acceptance dokaze: opaque parity, kontrolisani alpha blend,
+   PNG bytes/dimenzije i kompoziciju **istog** transparent foreground-a. Direktan
+   opaque render sa drugom pozadinom nije tačan alpha oracle jer menja SMAA
+   edge detection. Postojeći PG pragovi i baseline-i ostaju zasebni.
+4. Privatni `_materialBlend` patch ostaje samo research tehnika. Build ticket
+   mora zadati jedan održiv, verzijski vezan adapter sa eksplicitnom proverom
+   kompatibilnosti, izvorom/licencom i istim oracle-ima na stvarnoj zajedničkoj
+   putanji, bez tihog preskakanja korekcije kada se shader promeni.
+
+**Preostalo:** P-10(4) i dalje traži konkretne dimenzije, unsupported-size
+politiku i usvojeni metod/prag; F2/F11 traže output padding i hinge odluke.
+Puni render treba proširiti na ostale scene/uređaje i transparent input, uz
+negativnu double-tone-map probu i kasniju ciljanu mobilnu validaciju. Ova
+kontrolisana proba ne meri edge/weight faze, GPU memorijski maksimum,
+production download ili oporavak od context loss-a. Istraživački brojevi nisu
+usvojena izmena specifikacije. Sledeći planski deliverable je konkretan predlog
+odluka sa ovim dokazima; nema potrebe ponavljati završene male probe bez promene
+putanje ili konkretnog novog rizika.

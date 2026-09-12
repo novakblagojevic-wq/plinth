@@ -15,14 +15,15 @@ try {
  const page=await browser.newPage();const errors=[];
  page.on('pageerror',e=>errors.push(String(e)));
  page.on('console',m=>{if(m.type()==='error')errors.push(m.text());});
- await page.goto(new URL('docs/probes/tp6-alpha.html',url).href);
+ const blend=process.argv.includes('--blend');
+ await page.goto(new URL(blend?'docs/probes/tp6-blend.html':'docs/probes/tp6-alpha.html',url).href);
  await page.waitForFunction(()=>typeof window.runProbe==='function');
  const png=process.argv.includes('--png');
  const alphaAware=png||process.argv.includes('--alpha-aware');
  let report=await page.evaluate(({alphaAware,png})=>window.runProbe(alphaAware,png),{alphaAware,png});
  if(png){const {measurePNG}=await import('./tp6-png.mjs');report=await measurePNG(page,report);}
  Object.assign(report,{errors,browser:browser.version(),node:process.version,platform:process.platform,base:execFileSync('git',['rev-parse','HEAD'],{cwd:root,encoding:'utf8'}).trim()});
- writeFileSync(new URL(png?'tp6-png-results.json':alphaAware?'tp6-alpha-aware-results.json':'tp6-alpha-results.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
+ writeFileSync(new URL(blend?'tp6-blend-results.json':png?'tp6-png-results.json':alphaAware?'tp6-alpha-aware-results.json':'tp6-alpha-results.json',import.meta.url),JSON.stringify(report,null,2)+'\n');
  console.log(JSON.stringify({cases:report.results.length,errors}));
  if(errors.length||report.results.some(r=>r.glError)||report.passed===false)process.exitCode=1;
 } finally {await browser?.close();await server.close();}
