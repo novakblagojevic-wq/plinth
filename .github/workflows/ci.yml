@@ -1,7 +1,11 @@
 # PLINTH_SPEC §3: guards → tsc → vitest. `npm run ci` is that chain; the
 # Playwright browser is the no-network guard's (§2.2) only extra runtime need.
 name: ci
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 jobs:
   ci:
     runs-on: ubuntu-latest

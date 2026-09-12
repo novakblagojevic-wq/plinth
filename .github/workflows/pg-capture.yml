@@ -3,7 +3,11 @@
 # A missing baseline is a warning plus an uploaded candidate — the bless is a
 # human commit (§2.5). A present baseline is a hard gate.
 name: pg-capture
-on: [push, pull_request]
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
 jobs:
   pg-capture:
     runs-on: ubuntu-latest

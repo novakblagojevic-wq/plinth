@@ -1,0 +1,39 @@
+name: Open public T-P5 candidate PR
+run-name: Plinth · publish public candidate ${{ inputs.run_id }}
+on:
+  workflow_dispatch:
+    inputs:
+      run_id:
+        description: Successful public Test T-P5 candidate run ID
+        required: true
+        type: string
+permissions:
+  contents: write
+  pull-requests: write
+  actions: read
+concurrency:
+  group: plinth-public-tp5-publish
+  cancel-in-progress: false
+jobs:
+  publish:
+    if: github.ref == 'refs/heads/main'
+    runs-on: ubuntu-24.04
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: ${{ github.sha }}
+          path: tooling
+          persist-credentials: false
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          path: project
+          fetch-depth: 0
+          persist-credentials: false
+      - name: Verify passing candidate and open draft PR (no project execution)
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PLINTH_WRITE_TOKEN: ${{ github.token }}
+          CANDIDATE_RUN_ID: ${{ inputs.run_id }}
+        run: python3 tooling/scripts/ci/publish_candidate.py --ticket T-P5 --checkout project >> "$GITHUB_STEP_SUMMARY"
