@@ -87,6 +87,50 @@ try {
       }
     }
   }
+  // T-P5 named evidence. These supplement, never rename or replace, the
+  // legacy 20 device × scene captures above; no baselines are blessed here.
+  const evidenceCases = [
+    ...DEVICES.flatMap((device) => ['front', 'hero', 'top', 'lean'].map((pose) => ({ name: `pose-${device}-${pose}-reference`, device, pose }))),
+    { name: 'aspect-phone-square', device: 'phone', pose: 'hero', capture: 'square' },
+    { name: 'aspect-tablet-4x5', device: 'tablet', pose: 'hero', capture: 'portrait' },
+    { name: 'aspect-laptop-9x16', device: 'laptop', pose: 'top', capture: 'vertical' },
+    { name: 'aspect-browser-16x9', device: 'browser', pose: 'lean', capture: 'landscape' },
+    { name: 'aspect-card-3x1', device: 'card', pose: 'front', capture: 'wide' },
+  ];
+  const captureSizes = {
+    square: { width: 800, height: 800 },
+    portrait: { width: 800, height: 1000 },
+    vertical: { width: 720, height: 1280 },
+    landscape: { width: 1280, height: 720 },
+    wide: { width: 1200, height: 400 },
+  };
+  for (const evidence of evidenceCases) {
+    const size = evidence.capture ? captureSizes[evidence.capture] : SIZE;
+    const page = await browser.newPage({ viewport: size, deviceScaleFactor: 1 });
+    const errors = [];
+    page.on('pageerror', (e) => errors.push(String(e)));
+    const capture = evidence.capture ? `&capture=${evidence.capture}` : '';
+    await page.goto(`${url}?pg=1&scene=soft-studio&device=${evidence.device}&pose=${evidence.pose}${capture}`, { waitUntil: 'load' });
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
+    const canvas = await page.$('canvas#stage');
+    if (!canvas) throw new Error(`${evidence.name}: stage canvas missing`);
+    const frame = await canvas.evaluate((element) => {
+      const rect = element.getBoundingClientRect();
+      return { width: element.width, height: element.height,
+        cssWidth: rect.width, cssHeight: rect.height,
+        visible: rect.left >= 0 && rect.top >= 0
+          && rect.right <= window.innerWidth && rect.bottom <= window.innerHeight };
+    });
+    if (!frame.visible || frame.width !== size.width || frame.height !== size.height
+      || frame.cssWidth !== size.width || frame.cssHeight !== size.height) {
+      throw new Error(`${evidence.name}: whole canvas must match and fit the capture viewport`);
+    }
+    await canvas.screenshot({ path: join(OUT, `${evidence.name}.png`), type: 'png' });
+    await page.close();
+    captured++;
+    if (errors.length) { annotate('error', `${evidence.name}: page errors: ${errors.join(' | ')}`); failed++; }
+    else annotate('warning', `${evidence.name}: named T-P5 candidate uploaded, awaiting visual confirmation`);
+  }
 } finally {
   await browser.close();
   await server.close();

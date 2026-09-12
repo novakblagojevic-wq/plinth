@@ -109,29 +109,33 @@ export class ContactShadow {
 
   /** Capture and blur. Call after fit() and whenever the device or preset changes. */
   render(renderer: WebGLRenderer, scene: Scene): void {
+    // This pass temporarily changes shared renderer and scene state. Keep restoration
+    // in finally so either depth or blur failures leave the next capture recoverable.
     const background = scene.background;
     const environment = scene.environment;
     const target = renderer.getRenderTarget();
     const clearAlpha = renderer.getClearAlpha();
-
-    scene.background = null;
-    scene.environment = null;
-    scene.overrideMaterial = this.depthMaterial;
-    this.plane.visible = false;
-    renderer.setClearAlpha(0);
-    renderer.setRenderTarget(this.target);
-    renderer.clear();
-    renderer.render(scene, this.camera);
-    scene.overrideMaterial = null;
-    this.plane.visible = true;
-
-    this.blur(renderer, this.params.blur);
-    this.blur(renderer, this.params.blur * SECOND_PASS);
-
-    renderer.setRenderTarget(target);
-    renderer.setClearAlpha(clearAlpha);
-    scene.background = background;
-    scene.environment = environment;
+    const overrideMaterial = scene.overrideMaterial;
+    const planeVisible = this.plane.visible;
+    try {
+      scene.background = null;
+      scene.environment = null;
+      scene.overrideMaterial = this.depthMaterial;
+      this.plane.visible = false;
+      renderer.setClearAlpha(0);
+      renderer.setRenderTarget(this.target);
+      renderer.clear();
+      renderer.render(scene, this.camera);
+      this.blur(renderer, this.params.blur);
+      this.blur(renderer, this.params.blur * SECOND_PASS);
+    } finally {
+      renderer.setRenderTarget(target);
+      renderer.setClearAlpha(clearAlpha);
+      scene.background = background;
+      scene.environment = environment;
+      scene.overrideMaterial = overrideMaterial;
+      this.plane.visible = planeVisible;
+    }
   }
 
   private blur(renderer: WebGLRenderer, texels: number): void {

@@ -37,8 +37,12 @@ SMAA pass; `?msaa=1` swaps it for 4× MSAA on the render target.
 ## PG baselines
 
 `?pg=1` puts the stage in deterministic mode (PLINTH_SPEC §7): pixel ratio 1,
-a fixed 1280×800 canvas, fixed camera, no motion, no clock. `?device=<id>` picks
-the preset (`phone`, `tablet`, `laptop`, `browser`, `card`). `npm run pg:capture`
+a fixed 1280×800 canvas by default, fixed named pose, no motion, no orbit input and
+no clock. Drop, paste and file-pick image input remain available (§4.1). `?device=<id>` picks the preset (`phone`, `tablet`, `laptop`, `browser`,
+`card`); `?pose=front|hero|top|lean` picks a deterministic pose (unknown values
+fall back to `hero`). Explicit QA captures may add `?capture=square|portrait|vertical|landscape|wide`;
+they do not change the default. In the interactive preview, a constrained drag
+orbits above the floor and interrupts a pose transition into a custom view. `npm run pg:capture`
 renders every device × scene preset that way and writes candidates to `pg-out/`
 (`npm run pg:sheet` tiles them into one contact sheet); the
 `pg-capture` workflow does the same on CI and uploads them as the `pg-candidates`

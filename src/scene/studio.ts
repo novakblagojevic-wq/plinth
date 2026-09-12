@@ -34,10 +34,14 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
   let toneMapping: ToneMappingId = 'agx';
   renderer.toneMapping = AgXToneMapping;
 
+  let shadowDirty = true;
   function captureShadow(): void {
-    shadow.fit(stage.getRig().bounds);
+    shadow.fit(stage.getWorldBounds());
+    // Leave this true if either depth or blur throws; a later render retries.
     shadow.render(renderer, stage.scene);
+    shadowDirty = false;
   }
+  function invalidateShadow(): void { shadowDirty = true; }
 
   function applyScene(id: SceneId): void {
     const p = SCENE_PRESETS[id];
@@ -46,10 +50,10 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
     renderer.toneMappingExposure = p.exposure;
     shadow.setParams(p.shadow);
     document.body.style.background = p.background;
-    captureShadow();
+    invalidateShadow();
   }
 
-  stage.onDeviceChange(captureShadow);
+  const unsubscribeDevice = stage.onGeometryChange(invalidateShadow);
   applyScene(stage.getScene());
 
   // §6: compile every preset's programs at load so a switch is not a hitch.
@@ -64,10 +68,11 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
 
   return {
     ready: Promise.all([pipeline.ready, warm]).then(() => undefined),
-    render: () => pipeline.render(),
+    render: () => { if (shadowDirty) captureShadow(); pipeline.render(); },
     setSize: (w, h, dpr) => pipeline.setSize(w, h, dpr),
     setScene: applyScene,
     setToneMapping(id) {
+      if (id !== 'agx' && id !== 'aces') throw new Error('Unknown tone mapping.');
       toneMapping = id;
       renderer.toneMapping = id === 'aces' ? ACESFilmicToneMapping : AgXToneMapping;
       // Per-material tone mapping (pipeline.ts): the program key changes, so every material recompiles.
@@ -80,7 +85,9 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
     },
     getToneMapping: () => toneMapping,
     dispose() {
+      unsubscribeDevice();
       pipeline.dispose();
+      stage.scene.remove(shadow.group);
       shadow.dispose();
       for (const id of SCENE_IDS) envs[id].dispose();
     },
