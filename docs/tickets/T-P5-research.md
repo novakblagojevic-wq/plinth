@@ -175,3 +175,65 @@ download ističe, pun CI pada na browser setup-u, lokalni push nema credential.
 GitHub veza ima repo read/write pristup, ali to ne popravlja lokalni browser.
 Komande, osnova i ishodi su u [`T-P5-environment.md`](T-P5-environment.md).
 Ovaj nalaz sprečava početak implementacije; ne sprečava objavu planskog predloga.
+
+
+## Dopuna nastavka, 2026-09-12 — F14–F16
+
+Autor: Codex, nastavna sesija; tačan backend identifikator nije izložen.
+Osnova je ponovo potvrđen main `b0634fc78156a5f487f0ae1a663bc973c1b994fa`.
+Posmatrani T-P5 kandidat je `a77769c3c95e6e3484fc9ddb021ebfda233faec0`.
+Ova dopuna prethodi zasebnom P-12 spec-only commit-u i korekciji kandidata.
+Novak je 2026-09-12 odgovorio „Moze,nastavi” na konkretan predlog P-12 i
+spoljašnjeg T-P5 CI limita od 1200 s, uz nepromenjene limite pojedinačnih testova.
+
+### F14 — Pozitivan konačan aspekt može zahtevati nepredstavljivu kameru
+
+P-11(3) navodi svaki pozitivan konačan aspekt. Za primer `Number.MIN_VALUE`
+horizontalna projekcija/udaljenost ne može biti predstavljena konačnim brojem.
+Kandidat `src/scene.ts:206–279` prvo računa izdvojenu kameru i odbija neuspeh
+bez promene prikazane kamere; tačno odbijanje je provereno u ranijem nezavisnom
+preflight-u. To sprečava nevažeće stanje, ali je spec-u nedostajalo eksplicitno
+pravilo numeričke neizvodljivosti. Nalaz je već bio otvoren kao TODO(spec) F14
+u kandidatskom ticketu, a ovde dobija research zapis pre normativne dopune.
+
+Novak je odobrio zaseban P-12: odbiti numerički neizvodljiv zahtev pre mutacije,
+bez stezanja ili zaokruživanja aspekta. NDC ±0,9, near/far, FOV, referentna
+udaljenost i svih pet propisanih aspekata ostaju obavezni. Broj iteracija ili
+spor algoritam nisu sami po sebi numerička neizvodljivost. Ovo ne rešava F5
+ni budući PNG domen veličine. Potpun usvojeni tekst ide samo u spec-only commit.
+
+### F15 — Tačne PNG dimenzije nisu dokaz celog uspravnog kadra
+
+[Linux run 34696153078, pokušaj 2](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/attempts/2)
+proizveo je 45 PNG fajlova sa potvrđenim hash-evima i dimenzijama. Pregled
+[PG artefakta](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/artifacts/10299725819)
+otkrio je da `aspect-tablet-4x5.png` ima 200 odsečenih redova (800–999), a
+`aspect-laptop-9x16.png` 480 (800–1279). Svi ti redovi su `#14161a`, boja tela
+stranice. `scripts/pg-capture.mjs:101` i novi PG test koriste viewport 1280×800,
+a `src/main.ts:55–70,95–96,123–131` postavlja canvas do 1280 px visine.
+`index.html` ima visinu 100% i overflow hidden. Granica y=800 zato odgovara
+browser viewport-u, a ne geometrijskom framing-u. Test identičnosti dva
+ponavljanja prihvata i dva jednako odsečena PNG-a.
+
+Korekcija ostaje u odobrenom write set-u: izabrati viewport odgovarajućih
+imenovanih dimenzija pre navigacije; proveriti ceo canvas u viewport-u i
+njegove intrinsic/CSS dimenzije; dodati ponašajni dokaz donjeg dela uspravnog
+snimka i seeded violation sa starim viewport-om. Sačuvati 20 starih slučajeva,
+20 poza, pet aspekata i sve postojeće assertion-e/pragove/timeout-e. Ne menjati
+pipeline ili uklanjati crni deo naknadnom obradom slike. Ovo je implementacioni
+nedostatak dokaza, ne nova spec odluka ili dozvola da se baseline potvrdi.
+
+### F16 — Spoljašnji CI limit nema prostor za nove obavezne testove
+
+[Isti run, CI artefakt](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/artifacts/10299596633)
+potvrđuje da osnova prolazi `npm run ci` za 879,126 s: 40 guardova, typecheck,
+65 unit testova. Kandidat je prekinut na 900,018 s tokom guard faze. Tri nova
+T-P5 browser slučaja su prošla i trajala ukupno 118,249 s; na osnovi je do
+spoljašnjeg limita ostalo samo 20,874 s. Kandidat nema CI PASS.
+
+Novak je odobrio 1200 s isključivo za ukupnu `npm run ci` komandu T-P5
+profila/probe, na osnovi i kandidatu. Vitest/Playwright limiti pojedinačnih
+testova, assertion-i, tolerancije i pun obuhvat ostaju isti. T-P3 profil se ne
+menja. Novi limit i ugovorni pinovi zahtevaju zasebnu proveru runner-a;
+ne isključivati provere trenutnog main-a, roditelja, stabla, paketa ili uspeha
+svih osam obaveznih komandi. Neuspešan pokušaj ostaje neuspešan.
