@@ -1,4 +1,8 @@
-import { capturePng, cleanupAll } from './export/capture';
+import { decodeHash, encodeHash, snapshotState } from './state/codec';
+import { createNavigation } from './state/navigation';
+import { createShare } from './state/share';
+import { attachShortcuts } from './ui/shortcuts';
+import { capturePng, checkGl, cleanupAll } from './export/capture';
 import { createDownload } from './export/download';
 import { createRecovery, type RecoveryState } from './export/recovery';
 import type { ExportScale } from './export/preflight';
@@ -77,6 +81,9 @@ const PREVIEW_DPR_CAP = 2;
 
 const params = new URLSearchParams(window.location.search);
 const pg = params.get('pg') === '1';
+const initialHash = pg ? '' : window.location.hash;
+// Hash presence suppresses conflicting legacy query settings even when invalid.
+if (initialHash) for (const key of ['device','scene','pose','composition','background','msaa']) params.delete(key);
 const ui = !pg || params.get('ui') === '1';
 document.body.classList.add(ui ? 'editor' : 'pg');
 const msaa = !pg && params.get('msaa') === '1';
@@ -144,6 +151,9 @@ async function boot(): Promise<void> {
   cleanup.push(() => studio.dispose());
 
   let recoveryState: RecoveryState = 'ready';
+  let navigation: ReturnType<typeof createNavigation> | undefined;
+  let sharing: ReturnType<typeof createShare> | undefined;
+  let hydrationFailed = false;
   let armed = false;
   let ready = false;
   let controller: PoseController | null = null;
@@ -177,6 +187,8 @@ async function boot(): Promise<void> {
     }
     if (stage.camera.aspect !== w / h) stage.setAspect(w / h);
     render();
+    const focused = document.activeElement;
+    if (focused instanceof HTMLElement && document.querySelector('#panel')?.contains(focused)) focused.scrollIntoView({block:'nearest'});
   }
 
   const setImage = latestImageLoader(
@@ -189,7 +201,7 @@ async function boot(): Promise<void> {
   resize();
   await studio.ready;
   if (disposed) return;
-  settings = createSettingsStore(stage, studio, { immediate: pg, msaa, ...(!ui ? { fixedAspect: v0.w / v0.h } : {}) });
+  settings = createSettingsStore(stage, studio, { immediate: pg, msaa, onHydrationFailure: () => { hydrationFailed = true; recoveryState = 'failed'; panel?.setRecovery('failed'); exporter.invalidate('Scene restoration failed. Reload the page to continue.'); showNote('Scene restoration failed. Reload the page to continue.'); }, ...(!ui ? { fixedAspect: v0.w / v0.h } : {}) });
   const store = settings;
   cleanup.push(() => store.dispose());
   let panel: ReturnType<typeof createPanel> | undefined;
@@ -206,13 +218,15 @@ async function boot(): Promise<void> {
     invalidate: () => cleanupAll([() => exporter.invalidate('Restoring the preview…'), () => studio.suspend(), () => stage.releaseGpuResources()]),
     restore: async () => { await studio.recover(); },
     state(value) {
+      if (hydrationFailed && value !== 'disposed') return;
       recoveryState = value; panel?.setRecovery(value);
-      if (value === 'ready') { exporter.invalidate('The preview has been restored. You can export PNG again.'); if (note.textContent === 'Restoring the preview. Your image stays in this tab.') showNote(''); resize(); render(); controller?.start(); }
+      if (value !== 'ready') navigation?.suspend();
+      if (value === 'ready') { exporter.invalidate('The preview has been restored. You can export PNG again.'); if (note.textContent === 'Restoring the preview. Your image stays in this tab.') showNote(''); navigation?.ready(); resize(); render(); controller?.start(); }
       else if (value !== 'disposed') { showNote('Restoring the preview. Your image stays in this tab.'); }
     },
   });
   cleanup.push(() => recovery.dispose());
-  if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize, exporter); cleanup.push(() => panel!.dispose()); }
+  if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize, exporter, pg ? undefined : () => { void sharing?.copy(); }); cleanup.push(() => panel!.dispose()); }
   revealNotice = () => { if (ui && matchMedia('(max-width: 899px)').matches) panel?.setOpen(true); };
   cleanup.push(() => { revealNotice = () => {}; });
   const composition = params.get('composition');
@@ -220,6 +234,33 @@ async function boot(): Promise<void> {
   const background = params.get('background');
   if (background && ['preset', 'solid', 'gradient', 'transparent'].includes(background)) store.apply({ background: { ...store.get().background, mode: background as Settings['background']['mode'] } });
   if (ui && params.get('sheet') === 'open') panel!.setOpen(true);
+  if (!pg) {
+    const snapshot = (): string => encodeHash(snapshotState(store.get(),stage.isTransitioning()));
+    navigation = createNavigation({target:window,snapshot,available:() => recoveryState === 'ready',
+      invalidate:() => sharing?.invalidate(),notice:message => panel?.showShare({message}),
+      apply(hash) {
+        const data = hash ? decodeHash(hash) : null;
+        try {
+          if (data) store.hydrate(data); else store.reset();
+          resize(); studio.render(); checkGl(renderer,'Restoring shared scene');
+        } catch (error) {
+          hydrationFailed = true; recoveryState = 'failed'; panel?.setRecovery('failed'); exporter.invalidate('Scene restoration failed. Reload the page to continue.');
+          throw error;
+        }
+        panel?.showShare({message:hash ? 'Scene loaded. Add your screenshot — images are not included in links.' : 'Default scene restored. Your image stays in this tab.'});
+        resize();
+      },
+    });
+    sharing = createShare({snapshot,location:window.location,
+      ...(navigator.clipboard?.writeText ? {writeText:(text:string) => navigator.clipboard.writeText(text)} : {}),
+      address:hash => navigation!.copied(hash),show:value => panel?.showShare(value)});
+    cleanup.push(() => navigation!.dispose(),() => sharing!.dispose());
+    navigation.initial();
+    cleanup.push(store.subscribe((_state,reason) => {
+      if (reason === 'setImage' || (reason === 'advancePose' && stage.isTransitioning())) return;
+      navigation?.changed();
+    }));
+  }
   let lastPose = store.get().pose; let lastDevice = store.get().device;
   cleanup.push(store.subscribe((state, reason) => {
     const start = state.pose !== lastPose || state.device !== lastDevice;
@@ -230,7 +271,7 @@ async function boot(): Promise<void> {
   }));
   armed = true;
   window.__plinth = {
-    version: '0.0.0-tp7',
+    version: '0.0.0-tp9',
     async exportPng(scale, shadowOnly = false) {
       if (shadowOnly && !pg) throw new Error('Shadow capture is QA-only.');
       qaShadowOnly = shadowOnly;
@@ -239,7 +280,7 @@ async function boot(): Promise<void> {
       await operation;
       const result = exporter.get().result; if (!result) throw new Error('PNG is unavailable.'); return result;
     },
-    getRecovery: () => recovery.get(),
+    getRecovery: () => recoveryState,
     getSettings: () => store.get(),
     applySettings: patch => store.apply(patch),
     setOutputAspect: aspect => store.apply({ aspect }),
@@ -321,6 +362,7 @@ async function boot(): Promise<void> {
       orbit: (azimuth, elevation) => { if (recoveryState === 'ready') stage.orbit(azimuth, elevation); },
     }, render);
     cleanup.push(() => controller?.dispose());
+    cleanup.push(attachShortcuts(window,{ready:() => recoveryState === 'ready',device:id => store.setDevice(id),pose:id => {store.apply({pose:id});controller?.start();},png:() => {if (exporter.get().busy) return false; void exporter.run(store.get().pngScale).catch(() => {}); return true;},error:error => showNote(error instanceof Error ? error.message : 'Unable to apply shortcut.')}));
     // Query compositions are applied before the interaction controller exists.
     if (COMPOSITIONS.some(row => row.id === composition)) controller.start();
   }

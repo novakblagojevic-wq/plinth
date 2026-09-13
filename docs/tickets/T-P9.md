@@ -1,7 +1,8 @@
 # T-P9 core — shared scene links, shortcuts and mobile usability
 
-Status: **owner-approved P-14 contract; planning candidate awaiting independent
-review and merge. Not permission to implement on an unmerged planning branch.**
+Status: **implementation candidate on `astra/t-p9-build`, after independently
+reviewed planning PR #20 merged as `2f8b3f519911b3301412fb047939fed8126a3139`.
+Owner authorized implementation with “Moze”. Awaiting implementation review.**
 Author: Codex planning session (exact backend identifier not exposed).
 Base inspected: `ade7c25e6e7e84ee1ffe653a8495a7ed9efcdedd`, T-P7 PR #19 merged.
 Document of record: PLINTH_SPEC §2–§3, §4.1–§4.6, §4.8–§4.9, §6–§7;
@@ -256,3 +257,47 @@ asset changes; no altered output dimensions, tone/alpha/SMAA or geometry presets
 no video/motion/hash-image inclusion, accounts/backend/network/storage, framework
 migration or competitor branding. A normative gap becomes TODO(spec) with finding
 number and a stop in the affected scope; never change the spec inside build work.
+
+
+## Implementation evidence
+
+Implementer: Codex (backend model identifier not exposed), Linux / Node 24.19.0,
+pinned Chromium 153.0.8010.12 headless shell / Playwright 1.63.0 / SwiftShader.
+Base: `2f8b3f519911b3301412fb047939fed8126a3139`, fetched before editing;
+planning branch is merged, no intervening application diff. GitHub scoped branch
+creation succeeded. `npm ci` passed in the new build worktree. Base `npm run ci`:
+66 guards (406.11s), typecheck, 161 unit tests (7.57s); build passed (381ms).
+
+F1: merged base used; historical handoff statements are not treated as current.
+F2/F6/F11: explicit v1 DTO, bounded decoder and independent literal fixtures in
+`src/state/codec.ts` and its tests. No Three allocation in the wire validator.
+F3: Stage transition metadata plus `snapshotState` select the actual displayed view.
+F4: `SettingsStore.hydrate` validates first, applies immediately without PG MSAA
+forcing, and reports GPU failure through the editor failure/reload path. Startup
+also renders/checks GL before reporting a successful import. Image loader unchanged.
+F5: shared pngScale, exact composition derivation, explicit image-free projection.
+F7/F8: `createNavigation` owns coalescing/events/recovery; `createShare` owns click
+snapshots and async clipboard generations. Manual fallback remains selectable.
+F9/F10: `attachShortcuts` ignores editing/modifier/composition input; panel tracks
+focus across breakpoints and keeps focused controls visible after viewport resize.
+F12: new unit/browser guards, literal fixtures and seeded failures below; existing
+guards are unchanged. PG script adds four named share/help views, preserving all
+56 previous cases and 20 automatic comparisons. Fixtures remain untouched.
+
+Seeded browser negatives (response rewriting only, no committed mutation):
+- validation: removing numeric upper bounds fails the decoder rejection assertion
+  (`false` vs `true`), 7.50s.
+- target: serializing the selected target fails displayed-custom-view equality,
+  7.39s.
+- privacy: adding image sentinel data fails the decoded-link privacy assertion,
+  7.14s.
+- shortcut: removing editable-target exclusion changes phone to tablet while
+  typing and fails the device assertion, 9.08s.
+All four failed assertions after browser startup, not imports/launches.
+
+Local final and exact published head/tree plus CI/PG/PNG results are recorded in
+the implementation PR. A response-rewritten export-boundary probe verifies scale
+1/2/3 delegation; a separate real download is independently PNG-decoded at
+1920×640 with transparent alpha after link restoration and Shift+E.
+No new physical Android observation is claimed. Safari remains owner-deferred to
+release, not PASS. No usability participant or Gate-5b result is invented.

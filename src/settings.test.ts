@@ -6,7 +6,7 @@ import { compositionSettings } from './ui/compositions';
 import { latestImageLoader } from './screen/load';
 function setup() {
   const stage = createStage('phone','soft-studio',.8);
-  const studio = { getToneMapping: () => 'agx', prepareSettings: vi.fn(() => ({ commit: vi.fn(), dispose: vi.fn() })) };
+  const studio = { getToneMapping: () => 'agx', prepareSettings: vi.fn((value: {scene: ReturnType<typeof stage.getScene>}) => ({ commit: vi.fn(() => stage.setScene(value.scene)), dispose: vi.fn() })) };
   const store = createSettingsStore(stage,studio as never,{immediate:false,msaa:false});
   return {stage,studio,store};
 }
@@ -49,4 +49,25 @@ describe('T-P6 shared settings', () => {
     resolvers[1]!({bitmap:b,meta} as never); await recent; resolvers[0]!({bitmap:a,meta} as never); await old;
     expect(a.close).toHaveBeenCalledTimes(1); expect(b.close).not.toHaveBeenCalled(); expect(stage.getImage()).toMatchObject({fit:'cover',pad:.1,width:30}); stage.dispose(); store.dispose();
   });
+});
+
+it('T-P9 hydration is immediate, retains MSAA/scale/image and rejects invalid input before preparation',async()=>{
+  const {decodeV1,snapshotState}=await import('./state/codec');
+  const {stage,store,studio}=setup();const bitmap={close:vi.fn()} as never;
+  stage.setImage(bitmap,{identity:'user',width:12,height:8,originalWidth:12,originalHeight:8,downscaled:false,cap:8192});
+  const image=stage.getImage();const data=decodeV1({...snapshotState(store.get(),false),view:{pose:'lean'},msaa:true,pngScale:3});
+  store.hydrate(data);expect(store.get()).toMatchObject({pose:'lean',msaa:true,pngScale:3});expect(stage.isTransitioning()).toBe(false);
+  expect(stage.snapshot().custom.rotation.x).toBeCloseTo(-Math.sin(Math.PI/18),10);expect(stage.getImage()).toEqual(image);
+  const before=store.get();studio.prepareSettings.mockClear();expect(()=>store.hydrate({...data,pngScale:4} as never)).toThrow();expect(store.get()).toEqual(before);expect(studio.prepareSettings).not.toHaveBeenCalled();
+  store.reset();expect(store.get().pngScale).toBe(1);store.dispose();stage.dispose();
+});
+it('T-P9 hydration reports GPU application failure without a successful state emission',async()=>{
+  const {snapshotState}=await import('./state/codec');const stage=createStage('phone','soft-studio',.8);const failure=vi.fn();
+  const studio={getToneMapping:()=> 'agx',prepareSettings:()=>({commit(){throw new Error('GPU commit');},dispose:vi.fn()})};
+  const store=createSettingsStore(stage,studio as never,{immediate:false,msaa:false,onHydrationFailure:failure});const listener=vi.fn();store.subscribe(listener);
+  expect(()=>store.hydrate(snapshotState(store.get(),false))).toThrow('GPU commit');expect(failure).toHaveBeenCalledTimes(1);expect(listener).not.toHaveBeenCalled();store.dispose();stage.dispose();
+});
+it('T-P9 composition identity is derived only from all matching fields and a settled pose',()=>{
+  const {stage,store}=setup();store.compose('warm-card');expect(store.get().composition).toBeNull();stage.advancePose(1);expect(store.get().composition).toBe('warm-card');
+  store.apply({pngScale:3});expect(store.get().composition).toBe('warm-card');store.apply({pad:.01});expect(store.get().composition).toBeNull();store.apply({pad:0});expect(store.get().composition).toBe('warm-card');store.reset();expect(store.get().composition).toBe('studio-phone');expect(stage.isTransitioning()).toBe(false);store.dispose();stage.dispose();
 });
