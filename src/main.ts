@@ -285,6 +285,8 @@ async function boot(): Promise<void> {
       orbit: (azimuth, elevation) => stage.orbit(azimuth, elevation),
     }, render);
     cleanup.push(() => controller?.dispose());
+    // Query compositions are applied before the interaction controller exists.
+    if (COMPOSITIONS.some(row => row.id === composition)) controller.start();
   }
   const select = (file: File | undefined): void => {
     if (file) void setImage(file).catch(() => { /* The shared loader shows the error. */ });

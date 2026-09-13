@@ -81,3 +81,46 @@ it('T-P6 composition/reset and QA changes update native controls without losing 
     expect(await page.locator('.looks img').evaluateAll(images=>images.every(image=>(image as HTMLImageElement).complete&&(image as HTMLImageElement).naturalWidth===240))).toBe(true);
   } finally {await page.close();}
 });
+
+it('T-P6 review: invalid edits remain errors until corrected or replaced by reset/composition',async()=>{
+  const page=await browser.newPage({viewport:{width:1280,height:800}});
+  try {
+    await page.goto(url);await page.waitForSelector('html[data-plinth-ready="1"]',{timeout:60000});
+    await page.locator('summary').click();
+    const width=page.locator('#control-w'),height=page.locator('#control-h'),error=page.locator('#settings-error');
+    await width.fill('19');
+    expect(await width.getAttribute('aria-invalid')).toBe('true');
+    await height.fill('160');
+    expect(await width.inputValue()).toBe('19');expect(await width.getAttribute('aria-invalid')).toBe('true');
+    expect(await error.innerText()).toContain('Širina');
+    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.072);
+    await page.locator('#reset').click();
+    expect(await width.inputValue()).toBe('72');expect(await width.getAttribute('aria-invalid')).toBeNull();
+    expect(await width.getAttribute('aria-describedby')).toBeNull();expect(await error.innerText()).toBe('');
+    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.072);
+    await width.fill('19');await page.locator('[data-composition="warm-card"]').click();
+    expect(await width.inputValue()).toBe('300');expect(await width.getAttribute('aria-invalid')).toBeNull();
+    expect(await error.innerText()).toBe('');expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.3);
+    await width.fill('19');await width.fill('161');
+    expect(await width.inputValue()).toBe('161');expect(await width.getAttribute('aria-invalid')).toBeNull();
+    expect(await error.innerText()).toBe('');expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.161);
+  } finally {await page.close();}
+});
+
+it('T-P6 review: interactive composition query completes its displayed pose without QA advancement',async()=>{
+  const page=await browser.newPage({viewport:{width:900,height:600}});
+  try {
+    await page.clock.install();
+    await page.goto(url+'?composition=warm-card');await page.waitForSelector('html[data-plinth-ready="1"]',{timeout:60000});
+    expect(await page.evaluate(()=>window.__plinth.pg)).toBe(false);
+    // Drive the browser's real controller/rAF with a controlled clock, never the QA advance hook.
+    await page.clock.runFor(17);await page.clock.fastForward(750);
+    const state=await page.evaluate(()=>{const s=window.__plinth.getSettings();return{device:s.device,pose:s.pose,r:s.custom.rotation.toArray(),d:s.custom.direction.toArray()};});
+    expect(state.device).toBe('card');expect(state.pose).toBe('lean');
+    expect(state.r[0]).toBeCloseTo(-Math.sin(Math.PI/18),10);expect(state.r[3]).toBeCloseTo(Math.cos(Math.PI/18),10);
+    expect(state.d[0]).toBeCloseTo(.2/Math.hypot(.2,.16,1),10);
+    expect(state.r[1]).toBe(0);expect(state.r[2]).toBe(0);
+    expect(state.d[1]).toBeCloseTo(.16/Math.hypot(.2,.16,1),10);expect(state.d[2]).toBeCloseTo(1/Math.hypot(.2,.16,1),10);
+    expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(false);
+  } finally {await page.close();}
+});

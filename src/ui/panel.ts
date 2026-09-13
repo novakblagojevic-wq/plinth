@@ -41,9 +41,20 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   const close = root.querySelector<HTMLButtonElement>('#sheet-close')!;
   const opener = document.querySelector<HTMLButtonElement>('#settings-open')!;
   const error = document.createElement('p'); error.id = 'settings-error'; error.setAttribute('role', 'status'); error.setAttribute('aria-live', 'polite');
+  const errors = new Map<HTMLElement, string>();
+  function clearError(control?: HTMLElement): void {
+    for (const field of control ? [control] : [...errors.keys()]) {
+      errors.delete(field); field.removeAttribute('aria-invalid'); field.removeAttribute('aria-describedby');
+    }
+    error.textContent = [...errors.values()].join(' ');
+  }
   function attempt(control: HTMLElement, action: () => void): void {
-    try { action(); error.textContent = ''; root.querySelectorAll('[aria-invalid]').forEach(el => el.removeAttribute('aria-invalid')); }
-    catch (e) { error.textContent = e instanceof Error ? e.message : 'Promena nije primenjena.'; control.insertAdjacentElement('afterend', error); control.setAttribute('aria-invalid', 'true'); control.setAttribute('aria-describedby', error.id); }
+    try { action(); clearError(control); refresh(store.get()); }
+    catch (e) {
+      errors.set(control, e instanceof Error ? e.message : 'Promena nije primenjena.');
+      error.textContent = [...errors.values()].join(' '); control.insertAdjacentElement('afterend', error);
+      control.setAttribute('aria-invalid', 'true'); control.setAttribute('aria-describedby', error.id);
+    }
   }
   function section(title: string, parent = root): HTMLElement {
     const element = document.createElement('section'); const h = document.createElement('h2'); h.textContent = title; element.append(h); parent.append(element); return element;
@@ -66,7 +77,7 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
       if (!validNumericEdit(value, min, max, step)) throw new Error(`${title}: ${min}–${max} ${suffix}, korak ${step}.`);
       write(value);
     }), { signal });
-    input.addEventListener('keydown', event => { if (event.key === 'Escape' && input.hasAttribute('aria-invalid')) { event.stopPropagation(); input.value = String(read(store.get())); input.removeAttribute('aria-invalid'); error.textContent = ''; } }, { signal });
+    input.addEventListener('keydown', event => { if (event.key === 'Escape' && input.hasAttribute('aria-invalid')) { event.stopPropagation(); input.value = String(read(store.get())); clearError(input); } }, { signal });
     refreshers.push(state => { const value = read(state); if (!input.hasAttribute('aria-invalid')) input.value = String(value); output.value = `${Math.round(value * 100) / 100}${suffix}`; });
     parent.append(input); return input;
   }
@@ -119,7 +130,12 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   const msaaLabel = label(advanced, 'MSAA zaglađivanje prikaza', 'control-msaa'); const msaa = document.createElement('input'); msaa.id = 'control-msaa'; msaa.type = 'checkbox'; msaaLabel.prepend(msaa);
   msaa.addEventListener('change', () => attempt(msaa, () => store.apply({ msaa: msaa.checked })), { signal }); refreshers.push(s => { msaa.checked = s.msaa; });
   const reset = document.createElement('button'); reset.type = 'button'; reset.id = 'reset'; reset.textContent = 'Vrati početni izgled'; reset.addEventListener('click', () => attempt(reset, () => store.reset()), { signal }); root.append(reset, error);
-  const refresh = (state: Settings): void => { for (const fn of refreshers) fn(state); };
+  const refresh = (state: Settings, reason?: string): void => {
+    // A complete composition replaces pending edits, including through the QA API.
+    // Unrelated successful edits leave other invalid controls and their messages intact.
+    if (reason === 'apply' && state.composition !== null) clearError();
+    for (const fn of refreshers) fn(state);
+  };
   refresh(store.get()); const unsubscribe = store.subscribe(refresh);
   function setOpen(open: boolean): void {
     document.body.classList.toggle('sheet-open', open); opener.setAttribute('aria-expanded', String(open));
