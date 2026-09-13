@@ -65,3 +65,13 @@ it('T-P6 cleans acquired studio resources and subscriptions after warm-up failur
   studio.dispose();expect(fake.pipeline.dispose).toHaveBeenCalledTimes(1);expect(shadow.dispose).toHaveBeenCalledTimes(1);expect(stage.scene.children).not.toContain(shadow.group);expect(stage.scene.environment).toBeNull();
   stage.setPose('lean',true);stage.dispose();
 });
+it('T-P7 recovery retains the selected composition state, user bitmap and GPU ownership',async()=>{
+  Object.defineProperty(globalThis,'document',{configurable:true,value:{body:{style:{}}}});
+  const stage=createStage('phone','soft-studio',.8);const close=vi.fn();stage.setImage({width:4,height:4,close} as never,{width:4,height:4,originalWidth:4,originalHeight:4,downscaled:false,cap:8192,identity:'user'});
+  const renderer={compileAsync:vi.fn().mockResolvedValue(undefined),toneMapping:0,toneMappingExposure:0};
+  const studio=createStudio(renderer as never,stage,{msaa:false});await studio.ready;
+  const changes=vi.fn();const unsubscribe=stage.onStateChange(changes);const before=stage.snapshot();
+  await studio.recover();expect(close).not.toHaveBeenCalled();expect(stage.getImage()?.identity).toBe('user');expect(stage.snapshot()).toEqual(before);expect(changes).not.toHaveBeenCalled();
+  expect(fake.shadows[0]!.dispose).toHaveBeenCalledTimes(1);expect(stage.scene.children).not.toContain(fake.shadows[0]!.group);expect(stage.scene.children).toContain(fake.shadows[1]!.group);
+  unsubscribe();studio.dispose();stage.dispose();expect(close).toHaveBeenCalledTimes(1);
+});

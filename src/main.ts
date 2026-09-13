@@ -1,3 +1,7 @@
+import { capturePng, cleanupAll } from './export/capture';
+import { createDownload } from './export/download';
+import { createRecovery, type RecoveryState } from './export/recovery';
+import type { ExportScale } from './export/preflight';
 import { Vector3, WebGLRenderer, WebGLRenderTarget } from 'three';
 import { createPoseController, type PoseController } from './camera/controller';
 import { isPoseId, type PoseId, type PoseSelection } from './camera/poses';
@@ -31,6 +35,8 @@ declare global {
   }
 }
 export interface PlinthHook {
+  exportPng(scale: ExportScale, shadowOnly?: boolean): Promise<{ url: string; filename: string; width: number; height: number }>;
+  getRecovery(): RecoveryState;
   getSettings(): Settings;
   applySettings(patch: SettingsPatch): void;
   setOutputAspect(aspect: OutputAspect): void;
@@ -110,7 +116,7 @@ async function boot(): Promise<void> {
   const signal = abort.signal;
   const cleanup: (() => void)[] = [() => renderer.dispose(), () => abort.abort(), () => earlyInput.abort()];
   let disposed = false;
-  function dispose(): void { if (disposed) return; disposed = true; for (const fn of cleanup.reverse()) fn(); delete document.documentElement.dataset['plinthReady']; }
+  function dispose(): void { if (disposed) return; disposed = true; delete document.documentElement.dataset['plinthReady']; cleanupAll(cleanup.reverse()); }
   try {
   const pixelRatio = pg ? 1 : Math.min(window.devicePixelRatio, PREVIEW_DPR_CAP);
   renderer.setPixelRatio(pixelRatio);
@@ -137,11 +143,12 @@ async function boot(): Promise<void> {
   const studio = createStudio(renderer, stage, { msaa });
   cleanup.push(() => studio.dispose());
 
+  let recoveryState: RecoveryState = 'ready';
   let armed = false;
   let ready = false;
   let controller: PoseController | null = null;
   function render(): void {
-    if (!armed || disposed) return;
+    if (!armed || disposed || recoveryState !== 'ready' || renderer.getContext().isContextLost()) return;
     studio.render();
     if (!ready) {
       ready = true;
@@ -152,6 +159,7 @@ async function boot(): Promise<void> {
 
   let renderWidth = 0; let renderHeight = 0;
   function resize(): void {
+    if (disposed || recoveryState !== 'ready') return;
     if (ui && window.innerWidth < 900) {
       const height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
       document.body.style.height = `${height}px`;
@@ -174,7 +182,7 @@ async function boot(): Promise<void> {
   const setImage = latestImageLoader(
     (src) => loadImage(src, cap),
     ({ bitmap, meta }) => { if (disposed) { bitmap.close(); return; } stage.setImage(bitmap, meta); render(); },
-    showNote,
+    text => { if (!disposed) showNote(text); },
   );
 
   // Install hooks and inputs only after initial mount and warm-up have completed.
@@ -185,7 +193,26 @@ async function boot(): Promise<void> {
   const store = settings;
   cleanup.push(() => store.dispose());
   let panel: ReturnType<typeof createPanel> | undefined;
-  if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize); cleanup.push(() => panel!.dispose()); }
+  let qaShadowOnly = false;
+  const exporter = createDownload(scale => {
+    if (disposed || recoveryState !== 'ready') throw new Error('Prikaz nije spreman za PNG.');
+    const state = store.get(); const visible = stage.getRig().group.visible;
+    if (qaShadowOnly) { studio.render(); stage.getRig().group.visible = false; }
+    try { return capturePng(renderer, stage, studio, { aspect: state.aspect, device: state.device, scene: state.scene, scale }, ready); }
+    finally { stage.getRig().group.visible = visible; render(); }
+  });
+  cleanup.push(() => exporter.dispose());
+  const recovery = createRecovery(canvas, {
+    invalidate: () => cleanupAll([() => exporter.invalidate('Obnavljanje prikaza…'), () => studio.suspend(), () => stage.releaseGpuResources()]),
+    restore: async () => { await studio.recover(); },
+    state(value) {
+      recoveryState = value; panel?.setRecovery(value);
+      if (value === 'ready') { exporter.invalidate('Prikaz je obnovljen. Možeš ponovo izvesti PNG.'); if (note.textContent === 'Obnavljanje prikaza. Slika ostaje u ovoj kartici.') showNote(''); resize(); render(); controller?.start(); }
+      else if (value !== 'disposed') { showNote('Obnavljanje prikaza. Slika ostaje u ovoj kartici.'); }
+    },
+  });
+  cleanup.push(() => recovery.dispose());
+  if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize, exporter); cleanup.push(() => panel!.dispose()); }
   revealNotice = () => { if (ui && matchMedia('(max-width: 899px)').matches) panel?.setOpen(true); };
   cleanup.push(() => { revealNotice = () => {}; });
   const composition = params.get('composition');
@@ -203,7 +230,16 @@ async function boot(): Promise<void> {
   }));
   armed = true;
   window.__plinth = {
-    version: '0.0.0-tp6',
+    version: '0.0.0-tp7',
+    async exportPng(scale, shadowOnly = false) {
+      if (shadowOnly && !pg) throw new Error('Shadow capture is QA-only.');
+      qaShadowOnly = shadowOnly;
+      let operation: Promise<void>;
+      try { operation = exporter.run(scale); } finally { qaShadowOnly = false; }
+      await operation;
+      const result = exporter.get().result; if (!result) throw new Error('PNG nije dostupan.'); return result;
+    },
+    getRecovery: () => recovery.get(),
     getSettings: () => store.get(),
     applySettings: patch => store.apply(patch),
     setOutputAspect: aspect => store.apply({ aspect }),
@@ -281,8 +317,8 @@ async function boot(): Promise<void> {
     cleanup.push(() => window.removeEventListener('resize', resize));
     window.visualViewport?.addEventListener('resize', resize, { signal });
     controller = createPoseController(canvas, {
-      advance: (dt) => stage.advancePose(dt),
-      orbit: (azimuth, elevation) => stage.orbit(azimuth, elevation),
+      advance: (dt) => recoveryState === 'ready' ? stage.advancePose(dt) : false,
+      orbit: (azimuth, elevation) => { if (recoveryState === 'ready') stage.orbit(azimuth, elevation); },
     }, render);
     cleanup.push(() => controller?.dispose());
     // Query compositions are applied before the interaction controller exists.

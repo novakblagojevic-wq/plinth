@@ -19,6 +19,9 @@ export interface PreparedStage { commit(): void; dispose(): void }
 /** Renderer-free scene state; interactive scheduling is owned by camera/controller.ts. */
 export interface Stage {
   snapshot(): StageSettings;
+  withOutputCamera<T>(aspect: number, capture: () => T): T;
+  releaseGpuResources(): void;
+  restoreImageTexture(): void;
   prepareSettings(next: StageSettings, immediate?: boolean, changePose?: boolean): PreparedStage;
   onStateChange(cb: (reason: string) => void): () => void;
   dispose(): void;
@@ -175,6 +178,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   let transition: PoseTransition | null = null;
   let worldBounds = new Box3();
   let image: { bitmap: ImageBitmap; texture: Texture; meta: ImageMeta } | null = null;
+  let imageTextureReleased = false;
   let fit: FitMode = 'contain';
   let pad = 0;
   let outputPad = 0;
@@ -303,13 +307,42 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
 
   const api: Stage = {
     scene, camera, key,
+    withOutputCamera(aspect, capture) {
+      if (disposed || !Number.isFinite(aspect) || aspect <= 0) throw new Error('Invalid output camera.');
+      const next = calculateFrame(aspect); const saved = camera.clone();
+      try { installFrame(next); return capture(); }
+      finally { camera.copy(saved, false); }
+    },
+    releaseGpuResources() {
+      const resources = new Set<{ dispose(): void }>();
+      scene.traverse(object => { if (object instanceof Mesh) {
+        resources.add(object.geometry);
+        for (const material of Array.isArray(object.material) ? object.material : [object.material]) resources.add(material);
+      } });
+      if (image && !imageTextureReleased) { resources.add(image.texture); imageTextureReleased = true; }
+      const errors: unknown[] = [];
+      for (const resource of resources) try { resource.dispose(); } catch(error) { errors.push(error); }
+      if (errors.length) throw new AggregateError(errors, 'GPU resource release failed.');
+    },
+    restoreImageTexture() {
+      if (disposed) throw new Error('Stage is disposed.');
+      if (image) {
+        const old = image.texture;
+        const texture = new Texture(image.bitmap); texture.colorSpace = SRGBColorSpace;
+        texture.flipY = false; texture.needsUpdate = true; image.texture = texture;
+        bindImage(); if (!imageTextureReleased) old.dispose(); imageTextureReleased = false;
+      }
+      scene.traverse(object => {
+        if (object instanceof Mesh) for (const material of Array.isArray(object.material) ? object.material : [object.material]) material.needsUpdate = true;
+      });
+    },
     snapshot: () => ({ device: id, spec: { ...rig.spec }, pose: selected, custom: { ...clonePose(display), position: posePivot.position.clone() },
       aspect: camera.aspect, outputPad, fit, pad, padColor }),
     onStateChange(cb) { stateListeners.add(cb); return () => { stateListeners.delete(cb); }; },
     dispose() {
       if (disposed) return; disposed = true;
       stateListeners.clear(); geometryListeners.clear(); deviceListeners.clear();
-      rig.dispose(); image?.texture.dispose(); image?.bitmap.close(); image = null;
+      rig.dispose(); if (!imageTextureReleased) image?.texture.dispose(); image?.bitmap.close(); image = null;
       scene.clear();
     },
     prepareSettings(next, immediate = false, changePose = false) {
@@ -489,7 +522,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
       texture.needsUpdate = true;
       image = { bitmap, texture, meta: { ...meta } };
       bindImage();
-      previous?.texture.dispose();
+      if (!imageTextureReleased) previous?.texture.dispose(); imageTextureReleased = false;
       previous?.bitmap.close();
     },
     setFit(mode) {

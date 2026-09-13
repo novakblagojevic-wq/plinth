@@ -8,7 +8,7 @@
 **Live:** https://plinth-phi.vercel.app/
 
 **Status:** pre-alpha, Build Games entry. The interactive studio is available;
-PNG downloads, motion/video and shareable settings are still upcoming.
+PNG downloads are implemented in T-P7; motion/video and shareable settings are still upcoming.
 
 3D mockup studio in the browser. Devices are parametric generic slabs, never a
 replica of any manufacturer's design. Nothing leaves the tab: no network at
@@ -39,8 +39,14 @@ Advanced controls expose geometry, hinge angle, materials, AgX/ACES and preview
 MSAA. **Vrati početni izgled** restores the Studio composition while keeping
 your uploaded image. Nothing is uploaded or saved to a server.
 
-The output dimensions are defined for the upcoming PNG exporter; there is no
-PNG download button in this T-P6 build.
+In **Sačuvaj sliku**, choose 1×, 2× or 3× with the displayed dimensions,
+then **Izvezi PNG**. When the file is ready, use **Preuzmi PNG**. The file
+keeps the requested dimensions, colour and transparency; the filename includes
+the device, light, format and scale. The editor checkerboard is not exported.
+If your device cannot support a size, choose a smaller scale explicitly.
+The app never silently substitutes a smaller image. A lost graphics context
+triggers recovery from the image held in this tab; if recovery fails, the page
+offers a reload with a reminder to select the image again.
 
 ## Scene presets
 
@@ -93,6 +99,20 @@ including transparent input and separately measured canvas/offscreen buffers.
 `guards/panel.test.ts` drives touch gestures, layout, native input and keyboard
 controls. These Linux/Chromium/SwiftShader tests do not establish physical
 mobile GPU performance or the five-run release performance gate.
+
+## PNG verification
+
+`npm run png:acceptance` writes `png-out/`: all 15 actual PNG sizes, the full
+5-device × 4-scene × 2-tone × 5-aspect matrix in opaque and transparent mode,
+an independent canvas comparison, a manifest and contact sheet. The separate
+Linux `png-capture` workflow publishes these as `png-evidence`; it excludes
+documentation-only changes. Existing PG fixtures and comparisons remain.
+`node scripts/png-acceptance.mjs --probe` measures one 1× and the largest 3×
+output before the complete run. These timings are environment observations.
+
+Automated mobile viewports do not establish physical device support. Actual
+mobile save/open checks and the release performance gate are tracked separately
+in the T-P7 ticket and implementation PR. No video export is implied.
 
 ## Licence
 

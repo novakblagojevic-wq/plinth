@@ -15,7 +15,8 @@
     "licenses": "node scripts/licenses.mjs",
     "ci": "npm run guards && npm run typecheck && npm run test",
     "pg:capture": "node scripts/pg-capture.mjs",
-    "pg:sheet": "node scripts/contact-sheet.mjs"
+    "pg:sheet": "node scripts/contact-sheet.mjs",
+    "png:acceptance": "node scripts/png-acceptance.mjs"
   },
   "dependencies": {
     "three": "0.185.1"

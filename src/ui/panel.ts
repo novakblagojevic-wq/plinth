@@ -1,7 +1,10 @@
 import { DEVICE_IDS } from '../devices/presets';
 import { invariantViolations, type DeviceSpec } from '../devices/spec';
 import { POSE_IDS } from '../camera/poses';
-import { ASPECT_IDS } from '../output';
+import { ASPECT_IDS, outputDimensions } from '../output';
+import type { DownloadController, DownloadState } from '../export/download';
+import type { ExportScale } from '../export/preflight';
+import type { RecoveryState } from '../export/recovery';
 import { SCENE_IDS } from '../scene/presets';
 import type { Settings, SettingsStore } from '../settings';
 import { COMPOSITIONS } from './compositions';
@@ -34,7 +37,7 @@ export function deviceEditError(spec: DeviceSpec): string | undefined {
   const violation = invariantViolations(spec)[0];
   return violation ? messages[violation] ?? 'Proveri dimenzije uređaja.' : undefined;
 }
-export function createPanel(root: HTMLElement, store: SettingsStore, layoutChanged: () => void) {
+export function createPanel(root: HTMLElement, store: SettingsStore, layoutChanged: () => void, exporter?: DownloadController) {
   const abort = new AbortController(); const signal = abort.signal;
   const refreshers: ((state: Settings) => void)[] = [];
   root.innerHTML = '<header><div><span class="eyebrow">PLINTH</span><h1>Studio za tvoju sliku</h1></div><button type="button" id="sheet-close" aria-label="Zatvori podešavanja">×</button></header>';
@@ -119,6 +122,37 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   select(fit, 'fit', 'Uklapanje', ['contain', 'cover'], s => s.fit, value => store.apply({ fit: value as Settings['fit'] }));
   numeric(fit, 'pad', 'Margina slike', 0, 25, 1, s => s.pad * 100, value => store.apply({ pad: value / 100 }));
   colour(fit, 'padColor', 'Boja margine', s => s.padColor, value => store.apply({ padColor: value }));
+  const png = exporter ? section('Sačuvaj sliku') : undefined;
+  let refreshExport = (): void => {};
+  let recovery: RecoveryState = 'ready';
+  let exportUnsubscribe = (): void => {};
+  if (png && exporter) {
+    label(png, 'Veličina PNG slike', 'png-scale');
+    const scale = document.createElement('select'); scale.id = 'png-scale';
+    for (const n of [1,2,3]) { const option = document.createElement('option'); option.value = String(n); scale.append(option); }
+    const button = document.createElement('button'); button.id = 'png-export'; button.type = 'button'; button.textContent = 'Izvezi PNG';
+    const status = document.createElement('p'); status.id = 'png-status'; status.setAttribute('role', 'status'); status.setAttribute('aria-live', 'polite');
+    const link = document.createElement('a'); link.id = 'png-download'; link.textContent = 'Preuzmi PNG'; link.hidden = true;
+    const reload = document.createElement('button'); reload.id = 'png-reload'; reload.type = 'button'; reload.textContent = 'Ponovo učitaj'; reload.hidden = true;
+    reload.addEventListener('click', () => window.location.reload(), { signal });
+    button.addEventListener('click', () => { void exporter.run(Number(scale.value) as ExportScale).catch(() => {}); }, { signal });
+    link.addEventListener('click', () => { status.textContent = 'Preuzimanje je pokrenuto. Proveri preuzete fajlove.'; }, { signal });
+    png.append(scale, button, status, link, reload);
+    function display(value: DownloadState): void {
+      button.disabled = value.busy || recovery !== 'ready'; scale.disabled = value.busy || recovery !== 'ready';
+      button.setAttribute('aria-busy', String(value.busy));
+      status.textContent = recovery === 'ready' ? value.message : recovery === 'failed' || recovery === 'lost'
+        ? 'Obnavljanje prikaza. Ako se prikaz ne vrati, ponovo učitaj stranicu i izaberi sliku.' : 'Obnavljanje prikaza…';
+      reload.hidden = !['lost', 'failed'].includes(recovery);
+      link.hidden = !value.result || recovery !== 'ready';
+      if (value.result && recovery === 'ready') { link.href = value.result.url; link.download = value.result.filename; link.textContent = `Preuzmi PNG · ${value.result.width} × ${value.result.height}`; }
+      else { link.removeAttribute('href'); link.removeAttribute('download'); }
+    }
+    refreshExport = () => display(exporter.get());
+    exportUnsubscribe = exporter.subscribe(display);
+    refreshers.push(state => { for (const option of scale.options) { const n = Number(option.value) as ExportScale; const d = outputDimensions(state.aspect, n); option.textContent = `${n}× · ${d.width} × ${d.height}`; } });
+    refreshExport();
+  }
   const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = 'Napredna podešavanja'; summary.setAttribute('aria-controls', 'advanced-controls'); summary.setAttribute('aria-expanded', 'false'); details.append(summary); root.append(details);
   const advanced = section('Oblik i materijal', details); advanced.id = 'advanced-controls';
   details.addEventListener('toggle', () => summary.setAttribute('aria-expanded', String(details.open)), { signal });
@@ -145,5 +179,12 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   close.addEventListener('click', () => setOpen(false), { signal });
   root.addEventListener('keydown', event => { if (event.key === 'Escape' && matchMedia('(max-width: 899px)').matches) { event.preventDefault(); setOpen(false); } }, { signal });
   root.addEventListener('focusin', event => { (event.target as HTMLElement).scrollIntoView({ block: 'nearest' }); }, { signal });
-  return { setOpen, dispose() { unsubscribe(); abort.abort(); } };
+  return { setOpen,
+    setRecovery(value: RecoveryState) {
+      recovery = value;
+      for (const element of root.children) if (element instanceof HTMLElement && element !== png && element.tagName !== 'HEADER') element.inert = value !== 'ready';
+      refreshExport();
+    },
+    dispose() { exportUnsubscribe(); unsubscribe(); abort.abort(); }
+  };
 }
