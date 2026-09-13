@@ -301,3 +301,20 @@ the implementation PR. A response-rewritten export-boundary probe verifies scale
 1920×640 with transparent alpha after link restoration and Shift+E.
 No new physical Android observation is claimed. Safari remains owner-deferred to
 release, not PASS. No usability participant or Gate-5b result is invented.
+
+### Independent review FIXUP — PR #21
+
+Review of `0e1f7c1` identified two P-14(3–4) integration failures:
+1. Completion of an existing pose transition overwrote a newer rejected hash.
+   Navigation now distinguishes explicit settings edits from animation completion;
+   rejection blocks the latter until an explicit edit or Copy link. Browser
+   regressions cover malformed and future-version links during the real R action,
+   settling the transition, and subsequent explicit edit/copy recovery.
+2. Clipboard status replaced the History API failure message. Address status now
+   has a separate live region, retained through successful and denied clipboard
+   operations and cleared after a successful address write. Integrated browser
+   assertions cover both clipboard outcomes without changing the existing
+   manual-copy assertions.
+
+No spec, fixture, dependency or workflow changes. Fresh review of the corrected
+published head remains required; the original review is FIXUP, not approval.

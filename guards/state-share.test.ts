@@ -69,3 +69,31 @@ it('T-P9 recovery defers latest navigation and PG ignores hash and shortcuts',as
  await ready(page,'?pg=1&device=tablet'+hash(literal()));expect(await page.evaluate(()=>window.__plinth.getDevice())).toBe('tablet');await page.keyboard.press('3');expect(await page.evaluate(()=>window.__plinth.getDevice())).toBe('tablet');expect(await page.locator('#copy-link').count()).toBe(0);
  }finally{await page.close();}
 });
+it('T-P9 rejected navigation survives an older transition until an explicit edit or Copy link',async()=>{
+ for(const rejected of ['#s=broken',hash({v:2})]) {
+  const page=await browser.newPage();try {
+   await page.clock.install();await ready(page);await page.clock.pauseAt(new Date(Date.now()+1000));
+   await page.keyboard.press('r');expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(true);
+   await page.evaluate(h=>new Promise<void>(resolve=>{addEventListener('hashchange',()=>resolve(),{once:true});location.hash=h;}),rejected);
+   expect(await page.locator('#share-status').innerText()).toMatch(/Invalid|Unsupported/);
+   await page.evaluate(()=>window.__plinth.advancePose(1));await page.clock.runFor(300);
+   expect(await page.evaluate(()=>location.hash)).toBe(rejected);
+   await page.evaluate(()=>window.__plinth.applySettings({pad:.2}));await page.clock.runFor(300);
+   expect(JSON.parse(Buffer.from((await page.evaluate(()=>location.hash)).slice(3),'base64url').toString()).pad).toBe(.2);
+   await page.evaluate(h=>new Promise<void>(resolve=>{addEventListener('hashchange',()=>resolve(),{once:true});location.hash=h;}),rejected);expect(await page.locator('#share-status').innerText()).toMatch(/Invalid|Unsupported/);
+   await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#copy-link')!.click());expect(await page.evaluate(()=>location.hash)).not.toBe(rejected);
+  }finally {await page.close();}
+ }
+});
+it('T-P9 Copy link retains address failure alongside clipboard success or denial',async()=>{
+ for(const denied of [false,true]) {
+  const page=await browser.newPage();try {
+   await page.addInitScript(denied=>{Object.defineProperty(navigator,'clipboard',{value:{writeText:async()=>{if(denied)throw new Error('denied');}}});history.replaceState=()=>{throw new Error('blocked');};},denied);
+   await ready(page);await page.locator('#copy-link').click();
+   await page.waitForFunction(denied=>document.querySelector('#share-status')!.textContent===(denied?'Copy this link manually':'Link copied'),denied);
+   expect(await page.locator('#share-address-status').innerText()).toContain('The address could not be updated');
+   expect(await page.locator('#share-address-status').isVisible()).toBe(true);expect(await page.evaluate(()=>location.hash)).toBe('');
+   if(denied)expect(await page.locator('#share-url').inputValue()).toContain('#s=');
+  }finally {await page.close();}
+ }
+});

@@ -20,3 +20,8 @@ it('defers only latest recovery navigation, preserves invalid input and owns dis
 it('history denial reports failure without breaking current copy',()=>{
   const x=setup();x.target.history.replaceState.mockImplementation(()=>{throw new Error('denied');});expect(()=>x.nav.copied('#s=now')).not.toThrow();expect(x.notice).toHaveBeenCalledWith('The address could not be updated. You can still use Copy link.');x.nav.dispose();
 });
+it('rejects animation-only synchronization after bad navigation but permits explicit edit and copy',()=>{
+ vi.useFakeTimers();const x=setup();x.nav.changed();x.apply.mockImplementation(()=>{throw new Error('invalid');});x.navigate('#s=bad');x.nav.changed(false);vi.advanceTimersByTime(300);expect(x.target.history.replaceState).not.toHaveBeenCalled();
+ x.nav.changed();vi.advanceTimersByTime(250);expect(x.target.location.hash).toBe('#s=current');
+ x.navigate('#s=bad');x.nav.copied('#s=copied');expect(x.target.location.hash).toBe('#s=copied');x.nav.dispose();
+});

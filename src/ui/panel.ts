@@ -155,6 +155,7 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
     refreshers.push(state => { scale.value = String(state.pngScale); for (const option of scale.options) { const n = Number(option.value) as ExportScale; const d = outputDimensions(state.aspect, n); option.textContent = `${n}× · ${d.width} × ${d.height}`; } });
     refreshExport();
   }
+  let showAddressNotice = (_message: string): void => {};
   let showShare = (_value: ShareMessage): void => {};
   if (share) {
     const area = section('Share scene'); area.id = 'share-section';
@@ -165,7 +166,9 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
     const fallback = document.createElement('input'); fallback.id = 'share-url'; fallback.readOnly = true; fallback.hidden = true; fallback.setAttribute('aria-label','Scene link to copy manually');
     fallback.addEventListener('focus', () => fallback.select(), {signal});
     fallback.addEventListener('click', () => fallback.select(), {signal});
-    area.append(hint,button,status,fallback);
+    const addressStatus = document.createElement('p'); addressStatus.id = 'share-address-status'; addressStatus.setAttribute('role','status'); addressStatus.hidden = true;
+    showAddressNotice = message => { addressStatus.textContent = message; addressStatus.hidden = !message; if (message && matchMedia('(max-width: 899px)').matches && !document.body.classList.contains('sheet-open')) setOpen(true); };
+    area.append(hint,button,status,addressStatus,fallback);
     showShare = value => { if (value.message && matchMedia('(max-width: 899px)').matches && !document.body.classList.contains('sheet-open')) setOpen(true); status.textContent = value.message; fallback.hidden = !value.url; fallback.value = value.url ?? ''; if (value.url) { setOpen(true); fallback.focus(); fallback.select(); } };
     const help = section('Keyboard shortcuts');
     const toggle = document.createElement('button'); toggle.type = 'button'; toggle.id = 'shortcut-help'; toggle.textContent = 'Show keyboard shortcuts'; toggle.setAttribute('aria-expanded','false'); toggle.setAttribute('aria-controls','shortcut-keys');
@@ -209,7 +212,7 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
     else if (media.matches && !document.body.classList.contains('sheet-open') && root.contains(active)) opener.focus();
   };
   media.addEventListener('change',adjustFocus,{signal});
-  return { setOpen, showShare,
+  return { setOpen, showShare, showAddressNotice,
     setRecovery(value: RecoveryState) {
       recovery = value;
       for (const element of root.children) if (element instanceof HTMLElement && element !== png && element.tagName !== 'HEADER') element.inert = value !== 'ready';

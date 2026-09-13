@@ -237,6 +237,7 @@ async function boot(): Promise<void> {
   if (!pg) {
     const snapshot = (): string => encodeHash(snapshotState(store.get(),stage.isTransitioning()));
     navigation = createNavigation({target:window,snapshot,available:() => recoveryState === 'ready',
+      addressNotice:message => panel?.showAddressNotice(message),
       invalidate:() => sharing?.invalidate(),notice:message => panel?.showShare({message}),
       apply(hash) {
         const data = hash ? decodeHash(hash) : null;
@@ -258,7 +259,7 @@ async function boot(): Promise<void> {
     navigation.initial();
     cleanup.push(store.subscribe((_state,reason) => {
       if (reason === 'setImage' || (reason === 'advancePose' && stage.isTransitioning())) return;
-      navigation?.changed();
+      navigation?.changed(reason !== 'advancePose');
     }));
   }
   let lastPose = store.get().pose; let lastDevice = store.get().device;
