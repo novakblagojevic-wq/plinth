@@ -1,12 +1,12 @@
 # T-P9 — proposed public state contract
 
-Status: **proposal for Novak's approval; not an amendment or build ticket**.
+Status: **approved by Novak after PR #20 head `49d4fc2`; adopted as P-14 in a separate spec-only commit.**
 Author: Codex. Base `ade7c25e6e7e84ee1ffe653a8495a7ed9efcdedd`.
 Research: `T-P9-research.md`, F1–F12, committed before this proposal.
 Cites §2, §4.1–4.6, §4.8–4.9, P-9/P-10/P-11/P-12/P-13.
-Once approved, transfer normative decisions into the next free P-entry
-(expected P-14, recheck) in a standalone spec-only commit. Do not implement
-against this proposal or mix that amendment with application code.
+The six sections below preserve the exact approved proposal. P-14 in
+PLINTH_SPEC is the authoritative adoption. The implementation ticket is
+`T-P9.md`; independent planning review and merge are required before build.
 
 ## 1. What a link contains — F2/F5/F6
 
