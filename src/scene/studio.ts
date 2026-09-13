@@ -1,95 +1,135 @@
-import { ACESFilmicToneMapping, AgXToneMapping, Mesh, type WebGLRenderer } from 'three';
+import { ACESFilmicToneMapping, AgXToneMapping, Color, Mesh, Vector4, type WebGLRenderTarget, type WebGLRenderer } from 'three';
 import type { Stage } from '../scene';
 import { ContactShadow } from './contactShadow';
 import { generateEnvironment, type EnvironmentMap } from './environment';
 import { createPipeline, type Pipeline } from './pipeline';
-import { SCENE_IDS, SCENE_PRESETS, type SceneId } from './presets';
+import { SCENE_IDS, SCENE_PRESETS, isSceneId, type SceneId } from './presets';
+import { defaultBackground, prepareBackground, validateBackground, type BackgroundSettings } from './background';
 
-/**
- * Renderer-bound half of the stage (§4.4): the four pre-filtered environments
- * (generated once at boot, swapped per preset — §6 warm-up), the contact
- * shadow, tone mapping and exposure, and the composer.
- */
 export type ToneMappingId = 'agx' | 'aces';
-
+export interface StudioSettings { scene: SceneId; tone: ToneMappingId; msaa: boolean; background: BackgroundSettings }
 export interface Studio {
   ready: Promise<void>;
   render(): void;
+  renderToTarget(target: WebGLRenderTarget): void;
   setSize(width: number, height: number, pixelRatio: number): void;
   setScene(id: SceneId): void;
   setToneMapping(id: ToneMappingId): void;
   getToneMapping(): ToneMappingId;
+  prepareSettings(value: StudioSettings): { commit(): void; dispose(): void };
   dispose(): void;
 }
 
 export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa: boolean }): Studio {
-  const envs = {} as Record<SceneId, EnvironmentMap>;
-  for (const id of SCENE_IDS) envs[id] = generateEnvironment(renderer, SCENE_PRESETS[id]);
-
-  const shadow = new ContactShadow();
-  stage.scene.add(shadow.group);
-
-  const pipeline: Pipeline = createPipeline(renderer, stage.scene, stage.camera, opts);
-
-  let toneMapping: ToneMappingId = 'agx';
-  renderer.toneMapping = AgXToneMapping;
-
+  const envs = new Map<SceneId, EnvironmentMap>();
+  let shadow: ContactShadow | undefined;
+  let pipeline: Pipeline | undefined;
+  let msaaPipeline: Pipeline | undefined;
+  let unsubscribe = (): void => {};
+  let disposed = false;
+  let size = { w: 1, h: 1, dpr: 1 };
+  let settings: StudioSettings = { scene: stage.getScene(), tone: 'agx', msaa: opts.msaa, background: defaultBackground() };
+  let background = prepareBackground(settings.background, stage.getPreset().background);
   let shadowDirty = true;
-  function captureShadow(): void {
-    shadow.fit(stage.getWorldBounds());
-    // Leave this true if either depth or blur throws; a later render retries.
-    shadow.render(renderer, stage.scene);
-    shadowDirty = false;
+  function dispose(): void {
+    if (disposed) return; disposed = true;
+    unsubscribe(); pipeline?.dispose(); msaaPipeline?.dispose(); background.dispose();
+    if (shadow) { stage.scene.remove(shadow.group); shadow.dispose(); }
+    stage.scene.environment = null;
+    for (const env of envs.values()) env.dispose(); envs.clear();
   }
-  function invalidateShadow(): void { shadowDirty = true; }
-
+  function setToneMapping(id: ToneMappingId): void {
+    if (id !== 'agx' && id !== 'aces') throw new Error('Unknown tone mapping.');
+    const changed = settings.tone !== id;
+    settings.tone = id;
+    renderer.toneMapping = id === 'aces' ? ACESFilmicToneMapping : AgXToneMapping;
+    if (changed) stage.scene.traverse(o => {
+      if (o instanceof Mesh) for (const mat of Array.isArray(o.material) ? o.material : [o.material]) mat.needsUpdate = true;
+    });
+  }
   function applyScene(id: SceneId): void {
-    const p = SCENE_PRESETS[id];
+    if (!isSceneId(id)) throw new Error('Unknown scene.');
+    settings.scene = id;
     stage.setScene(id);
-    stage.scene.environment = envs[id].texture;
-    renderer.toneMappingExposure = p.exposure;
-    shadow.setParams(p.shadow);
-    document.body.style.background = p.background;
-    invalidateShadow();
+    stage.scene.environment = envs.get(id)!.texture;
+    renderer.toneMappingExposure = SCENE_PRESETS[id].exposure;
+    shadow!.setParams(SCENE_PRESETS[id].shadow); shadowDirty = true;
+    // Retain the old QA body colour contract; the output has its own owner.
+    if (typeof document !== 'undefined') document.body.style.background = SCENE_PRESETS[id].background;
   }
-
-  const unsubscribeDevice = stage.onGeometryChange(invalidateShadow);
-  applyScene(stage.getScene());
-
-  // §6: compile every preset's programs at load so a switch is not a hitch.
-  const warm = (async () => {
-    const current = stage.getScene();
-    for (const id of SCENE_IDS) {
-      stage.scene.environment = envs[id].texture;
-      await renderer.compileAsync(stage.scene, stage.camera);
-    }
-    stage.scene.environment = envs[current].texture;
-  })();
-
-  return {
-    ready: Promise.all([pipeline.ready, warm]).then(() => undefined),
-    render: () => { if (shadowDirty) captureShadow(); pipeline.render(); },
-    setSize: (w, h, dpr) => pipeline.setSize(w, h, dpr),
-    setScene: applyScene,
-    setToneMapping(id) {
-      if (id !== 'agx' && id !== 'aces') throw new Error('Unknown tone mapping.');
-      toneMapping = id;
-      renderer.toneMapping = id === 'aces' ? ACESFilmicToneMapping : AgXToneMapping;
-      // Per-material tone mapping (pipeline.ts): the program key changes, so every material recompiles.
-      stage.scene.traverse((o) => {
-        if (o instanceof Mesh) {
-          const m = o.material;
-          for (const mat of Array.isArray(m) ? m : [m]) mat.needsUpdate = true;
+  function captureShadow(): void {
+    if (!shadow || !shadowDirty) return;
+    const viewport = renderer.getViewport(new Vector4()); const scissor = renderer.getScissor(new Vector4());
+    const scissorTest = renderer.getScissorTest();
+    try { renderer.setScissorTest(false); shadow.fit(stage.getWorldBounds()); shadow.render(renderer, stage.scene); shadowDirty = false; }
+    finally { renderer.setViewport(viewport); renderer.setScissor(scissor); renderer.setScissorTest(scissorTest); }
+  }
+  try {
+    for (const id of SCENE_IDS) envs.set(id, generateEnvironment(renderer, SCENE_PRESETS[id]));
+    shadow = new ContactShadow(); stage.scene.add(shadow.group);
+    pipeline = createPipeline(renderer, stage.scene, stage.camera, { msaa: false });
+    // MSAA is prepared on demand; the default retains only one finishing chain.
+    if (opts.msaa) msaaPipeline = createPipeline(renderer, stage.scene, stage.camera, { msaa: true });
+    unsubscribe = stage.onGeometryChange(() => { shadowDirty = true; });
+    applyScene(stage.getScene()); setToneMapping('agx');
+    const warm = (async () => {
+      try {
+        for (const id of SCENE_IDS) {
+          if (disposed) return;
+          stage.scene.environment = envs.get(id)!.texture;
+          await renderer.compileAsync(stage.scene, stage.camera);
         }
-      });
-    },
-    getToneMapping: () => toneMapping,
-    dispose() {
-      unsubscribeDevice();
-      pipeline.dispose();
-      stage.scene.remove(shadow.group);
-      shadow.dispose();
-      for (const id of SCENE_IDS) envs[id].dispose();
-    },
-  };
+      } finally { if (!disposed) stage.scene.environment = envs.get(settings.scene)!.texture; }
+    })();
+    const ready = Promise.all([pipeline.ready, warm]).then(() => undefined).catch(error => { dispose(); throw error; });
+    return {
+      ready,
+      render() {
+        if (disposed) return;
+        captureShadow(); background.apply(stage.scene, renderer, size.h * size.dpr);
+        (settings.msaa ? msaaPipeline! : pipeline!).render();
+      },
+      renderToTarget(target) {
+        if (disposed) throw new Error('Studio is disposed.');
+        const saved = { background: stage.scene.background, clear: renderer.getClearColor(new Color()), alpha: renderer.getClearAlpha() };
+        try {
+          captureShadow(); background.apply(stage.scene, renderer, target.height);
+          pipeline!.setSize(target.width, target.height, 1); pipeline!.renderToTarget(target);
+        } finally {
+          pipeline!.setSize(size.w, size.h, size.dpr);
+          // Restore the preview gradient too if its resolution changed.
+          background.apply(stage.scene, renderer, size.h * size.dpr);
+          if (settings.background.mode !== 'gradient') stage.scene.background = saved.background;
+          renderer.setClearColor(saved.clear, saved.alpha);
+        }
+      },
+      setSize(w, h, dpr) { size = { w, h, dpr }; pipeline!.setSize(w, h, dpr); msaaPipeline?.setSize(w, h, dpr); },
+      setScene(id) { applyScene(id); const next = prepareBackground(settings.background, SCENE_PRESETS[id].background); background.dispose(); background = next; },
+      setToneMapping,
+      getToneMapping: () => settings.tone,
+      prepareSettings(value) {
+        if (!isSceneId(value.scene) || !['agx', 'aces'].includes(value.tone) || typeof value.msaa !== 'boolean') throw new Error('Invalid studio settings.');
+        validateBackground(value.background);
+        const prepared = prepareBackground(value.background, SCENE_PRESETS[value.scene].background);
+        let candidate: Pipeline | undefined;
+        let committed = false;
+        try {
+          prepared.prepare(size.h * size.dpr);
+          if (value.msaa && !msaaPipeline) { candidate = createPipeline(renderer, stage.scene, stage.camera, { msaa: true }); candidate.setSize(size.w, size.h, size.dpr); }
+          return {
+            commit() {
+              if (committed) return; committed = true;
+              if (candidate) msaaPipeline = candidate;
+              if (settings.scene !== value.scene) applyScene(value.scene);
+              setToneMapping(value.tone);
+              settings = { ...value, background: { ...value.background } };
+              background.dispose(); background = prepared;
+            },
+            dispose() { if (!committed) { prepared.dispose(); candidate?.dispose(); } },
+          };
+        } catch (error) { prepared.dispose(); candidate?.dispose(); throw error; }
+      },
+      dispose,
+    };
+  } catch (error) { dispose(); throw error; }
 }

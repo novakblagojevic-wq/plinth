@@ -123,3 +123,21 @@ describe('pipeline-owned resources', () => {
     expect(dispose).toHaveBeenCalledTimes(1);
   });
 });
+
+it('restores target, viewport, scissor and clear state when offscreen rendering fails', async () => {
+  const { pipeline, renderer } = setup();
+  await finishImages(); await pipeline.ready;
+  const target = new WebGLRenderTarget(17,23);
+  Object.assign(renderer, {
+    getRenderTarget: () => target, getViewport: (v: {set(...values:number[]):unknown}) => v.set(1,2,17,23),
+    getScissor: (v: {set(...values:number[]):unknown}) => v.set(3,4,5,6), getScissorTest: () => true,
+    getClearColor: (c: {set(value:string):unknown}) => c.set('#123456'), getClearAlpha: () => .25,
+    setRenderTarget: vi.fn(), setViewport: vi.fn(), setScissor: vi.fn(), setScissorTest: vi.fn(), setClearColor: vi.fn(), autoClear: false,
+  });
+  vi.spyOn(pipeline.composer,'render').mockImplementationOnce(()=>{throw new Error('render failed');});
+  const output = new WebGLRenderTarget(30,40);
+  expect(()=>pipeline.renderToTarget(output)).toThrow('render failed');
+  const r = renderer as unknown as {setRenderTarget:ReturnType<typeof vi.fn>;setViewport:ReturnType<typeof vi.fn>;setScissor:ReturnType<typeof vi.fn>;setScissorTest:ReturnType<typeof vi.fn>;setClearColor:ReturnType<typeof vi.fn>;autoClear:boolean};
+  expect(r.setRenderTarget).toHaveBeenLastCalledWith(target);expect(r.setViewport).toHaveBeenLastCalledWith(expect.objectContaining({x:1,y:2,z:17,w:23}));expect(r.setScissor).toHaveBeenLastCalledWith(expect.objectContaining({x:3,y:4,z:5,w:6}));expect(r.setScissorTest).toHaveBeenLastCalledWith(true);expect(r.setClearColor).toHaveBeenLastCalledWith(expect.anything(),.25);expect(r.autoClear).toBe(false);expect(pipeline.composer.renderToScreen).toBe(true);
+  pipeline.dispose();target.dispose();output.dispose();
+});

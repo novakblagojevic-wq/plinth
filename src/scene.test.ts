@@ -178,3 +178,37 @@ describe('T-P5 world framing and posing', () => {
     expect(Math.asin((stage.camera.position.y - centre.y) / stage.camera.position.distanceTo(centre)) * 180 / Math.PI).toBeCloseTo(65, 3);
   });
 });
+
+describe('T-P6 output pad and prepared scene updates', () => {
+  it('preserves the P-11 lens, direction, floor and margin through every device/pose/aspect', () => {
+    for (const device of ['phone','tablet','laptop','browser','card'] as const) {
+      const stage = createStage(device,'soft-studio',1.6);
+      for (const pose of ['front','hero','top','lean'] as const) for (const aspect of [1,.8,16/9,9/16,3]) {
+        stage.setPose(pose,true); stage.setAspect(aspect);
+        const reset = stage.prepareSettings({...stage.snapshot(),outputPad:0},true); reset.commit(); reset.dispose();
+        const centre = stage.getWorldBounds().getCenter(new Vector3());
+        const d0 = stage.camera.position.distanceTo(centre); const fov = stage.camera.fov;
+        const direction = stage.camera.position.clone().sub(centre).normalize(); let previousExtent = Infinity;
+        for (const pad of [0,.01,.1,.25]) {
+          const prepared = stage.prepareSettings({...stage.snapshot(),outputPad:pad},true); prepared.commit(); prepared.dispose();
+          expect(stage.camera.position.distanceTo(centre)).toBeCloseTo(d0/(1-2*pad),10);
+          expect(stage.camera.fov).toBe(fov); expect(stage.camera.position.clone().sub(centre).normalize().distanceTo(direction)).toBeLessThan(1e-10);
+          expect(stage.getFloorMinY()).toBeCloseTo(0,10);
+          let extent = 0; const bounds = stage.getWorldBounds();
+          for(const x of [bounds.min.x,bounds.max.x]) for(const y of [bounds.min.y,bounds.max.y]) for(const z of [bounds.min.z,bounds.max.z]) {
+            const p = new Vector3(x,y,z).project(stage.camera); expect(Math.abs(p.x)).toBeLessThanOrEqual(.9); expect(Math.abs(p.y)).toBeLessThanOrEqual(.9); expect(Math.abs(p.z)).toBeLessThan(1);
+            extent = Math.max(extent,Math.abs(p.x),Math.abs(p.y));
+          }
+          expect(extent).toBeLessThanOrEqual(previousExtent+1e-10); previousExtent=extent;
+        }
+      }
+      stage.dispose();
+    }
+  });
+  it('composition transitions start from the displayed pose, including interrupted transitions', () => {
+    const stage = createStage('phone','soft-studio',.8); stage.setPose('top'); stage.advancePose(.2);
+    const display = stage.snapshot().custom;
+    const p = stage.prepareSettings({...stage.snapshot(),pose:'hero'},false,true); p.commit(); p.dispose();
+    expect(stage.snapshot().custom).toEqual(display); stage.advancePose(.75); expect(stage.getPose()).toBe('hero'); stage.dispose();
+  });
+});

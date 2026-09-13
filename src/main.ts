@@ -1,4 +1,4 @@
-import { Vector3, WebGLRenderer } from 'three';
+import { Vector3, WebGLRenderer, WebGLRenderTarget } from 'three';
 import { createPoseController, type PoseController } from './camera/controller';
 import { isPoseId, type PoseId, type PoseSelection } from './camera/poses';
 import { isDeviceId, type DeviceId } from './devices/presets';
@@ -7,6 +7,10 @@ import { createStage } from './scene';
 import { isSceneId, type SceneId } from './scene/presets';
 import { createStudio, type ToneMappingId } from './scene/studio';
 import { latestImageLoader, loadImage } from './screen/load';
+import { createSettingsStore, type Settings, type SettingsPatch, type SettingsStore } from './settings';
+import { fitOutput, type OutputAspect } from './output';
+import { createPanel } from './ui/panel';
+import { COMPOSITIONS, type CompositionId } from './ui/compositions';
 import type { FitMode, ImageState } from './screen/types';
 
 /**
@@ -27,6 +31,15 @@ declare global {
   }
 }
 export interface PlinthHook {
+  getSettings(): Settings;
+  applySettings(patch: SettingsPatch): void;
+  setOutputAspect(aspect: OutputAspect): void;
+  compose(id: CompositionId): void;
+  reset(): void;
+  /** QA-only same-task canvas/target readback, independent of CSS compositing. */
+  setCaptureSize(width: number, height: number): void;
+  readOutput(shadowOnly?: boolean): { preview: number[]; output: number[]; width: number; height: number };
+  dispose(): void;
   version: string;
   pg: boolean;
   setDevice(id: DeviceId): void;
@@ -58,6 +71,8 @@ const PREVIEW_DPR_CAP = 2;
 
 const params = new URLSearchParams(window.location.search);
 const pg = params.get('pg') === '1';
+const ui = !pg || params.get('ui') === '1';
+document.body.classList.add(ui ? 'editor' : 'pg');
 const msaa = !pg && params.get('msaa') === '1';
 const requestedDevice = params.get('device') ?? 'phone';
 const initialDevice: DeviceId = isDeviceId(requestedDevice) ? requestedDevice : 'phone';
@@ -77,27 +92,41 @@ const canvas: HTMLCanvasElement = stageEl;
 const pick = document.querySelector<HTMLButtonElement>('#pick')!;
 const input = document.querySelector<HTMLInputElement>('#image-file')!;
 const note = document.querySelector<HTMLParagraphElement>('#note')!;
-const showNote = (text: string): void => { note.textContent = text; };
+let revealNotice = (): void => {};
+const showNote = (text: string): void => { note.textContent = text; if (text) revealNotice(); };
+const earlyInput = new AbortController();
 // Prevent an early drop from navigating away while the initial image warms up.
 // This applies in both preview and deterministic PG mode (§4.1).
-canvas.addEventListener('dragover', (event) => event.preventDefault());
-canvas.addEventListener('drop', (event) => event.preventDefault());
+canvas.addEventListener('dragover', (event) => event.preventDefault(), { signal: earlyInput.signal });
+canvas.addEventListener('drop', (event) => event.preventDefault(), { signal: earlyInput.signal });
 
 // A boot error must leave an error message and no successful ready marker.
 async function boot(): Promise<void> {
 
   // §4.4.6: never `antialias: true` on the context (vault dead-end on ANGLE-D3D11).
   // SMAA on the composer is the default; MSAA lives on the render target.
-  const renderer = new WebGLRenderer({ canvas, antialias: false });
+  const renderer = new WebGLRenderer({ canvas, antialias: false, alpha: true });
+  const abort = new AbortController();
+  const signal = abort.signal;
+  const cleanup: (() => void)[] = [() => renderer.dispose(), () => abort.abort(), () => earlyInput.abort()];
+  let disposed = false;
+  function dispose(): void { if (disposed) return; disposed = true; for (const fn of cleanup.reverse()) fn(); delete document.documentElement.dataset['plinthReady']; }
+  try {
   const pixelRatio = pg ? 1 : Math.min(window.devicePixelRatio, PREVIEW_DPR_CAP);
   renderer.setPixelRatio(pixelRatio);
 
+  let settings: SettingsStore | undefined;
+  let captureOverride: { w: number; h: number } | undefined;
   function viewport(): { w: number; h: number } {
-    return pg ? { w: pgCaptureSize.width, h: pgCaptureSize.height } : { w: window.innerWidth, h: window.innerHeight };
+    if (captureOverride) return captureOverride;
+    if (!ui) return { w: pgCaptureSize.width, h: pgCaptureSize.height };
+    const rect = document.querySelector<HTMLElement>('#workspace')!.getBoundingClientRect();
+    return fitOutput(rect.width, rect.height, settings?.get().aspect ?? '4:5');
   }
 
   const v0 = viewport();
   const stage = createStage(initialDevice, initialScene, v0.w / v0.h);
+  cleanup.push(() => stage.dispose());
   // Capture mode selects its named pose before warm-up and never creates a scheduler.
   stage.setPose(initialPose, true);
   const cap = Math.min(8192, renderer.capabilities.maxTextureSize);
@@ -106,12 +135,13 @@ async function boot(): Promise<void> {
   if (demo.meta.downscaled) showNote(`Demo resized to ${demo.meta.width} × ${demo.meta.height} (limit ${cap} px).`);
   // Studio's existing warm-up must see this image/SDF variant in every preset.
   const studio = createStudio(renderer, stage, { msaa });
+  cleanup.push(() => studio.dispose());
 
   let armed = false;
   let ready = false;
   let controller: PoseController | null = null;
   function render(): void {
-    if (!armed) return;
+    if (!armed || disposed) return;
     studio.render();
     if (!ready) {
       ready = true;
@@ -120,52 +150,104 @@ async function boot(): Promise<void> {
     }
   }
 
+  let renderWidth = 0; let renderHeight = 0;
   function resize(): void {
+    if (ui && window.innerWidth < 900) {
+      const height = Math.min(window.innerHeight, window.visualViewport?.height ?? window.innerHeight);
+      document.body.style.height = `${height}px`;
+      document.body.style.setProperty('--viewport-height', `${height}px`);
+    } else document.body.style.removeProperty('height');
     const { w, h } = viewport();
-    renderer.setSize(w, h, false);
-    if (pg) {
+    if (w !== renderWidth || h !== renderHeight) {
+      renderer.setSize(w, h, false);
+      studio.setSize(w, h, pixelRatio);
+      renderWidth = w; renderHeight = h;
+    }
+    {
       canvas.style.width = `${w}px`;
       canvas.style.height = `${h}px`;
     }
-    stage.setAspect(w / h);
-    studio.setSize(w, h, pixelRatio);
+    if (stage.camera.aspect !== w / h) stage.setAspect(w / h);
     render();
   }
 
   const setImage = latestImageLoader(
     (src) => loadImage(src, cap),
-    ({ bitmap, meta }) => { stage.setImage(bitmap, meta); render(); },
+    ({ bitmap, meta }) => { if (disposed) { bitmap.close(); return; } stage.setImage(bitmap, meta); render(); },
     showNote,
   );
 
   // Install hooks and inputs only after initial mount and warm-up have completed.
   resize();
   await studio.ready;
+  if (disposed) return;
+  settings = createSettingsStore(stage, studio, { immediate: pg, msaa, ...(!ui ? { fixedAspect: v0.w / v0.h } : {}) });
+  const store = settings;
+  cleanup.push(() => store.dispose());
+  let panel: ReturnType<typeof createPanel> | undefined;
+  if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize); cleanup.push(() => panel!.dispose()); }
+  revealNotice = () => { if (ui && matchMedia('(max-width: 899px)').matches) panel?.setOpen(true); };
+  cleanup.push(() => { revealNotice = () => {}; });
+  const composition = params.get('composition');
+  if (COMPOSITIONS.some(row => row.id === composition)) store.compose(composition as CompositionId);
+  const background = params.get('background');
+  if (background && ['preset', 'solid', 'gradient', 'transparent'].includes(background)) store.apply({ background: { ...store.get().background, mode: background as Settings['background']['mode'] } });
+  if (ui && params.get('sheet') === 'open') panel!.setOpen(true);
+  let lastPose = store.get().pose; let lastDevice = store.get().device;
+  cleanup.push(store.subscribe((state, reason) => {
+    const start = state.pose !== lastPose || state.device !== lastDevice;
+    lastPose = state.pose; lastDevice = state.device;
+    // The orbit controller (and QA step) already renders its own frame.
+    if (!['advancePose', 'orbit', 'setImage'].includes(reason ?? '')) resize();
+    if (start && state.pose !== null) controller?.start();
+  }));
   armed = true;
   window.__plinth = {
-    version: '0.0.0-tp5',
+    version: '0.0.0-tp6',
+    getSettings: () => store.get(),
+    applySettings: patch => store.apply(patch),
+    setOutputAspect: aspect => store.apply({ aspect }),
+    compose: id => store.compose(id), reset: () => store.reset(), dispose,
+    setCaptureSize(width, height) {
+      if (!pg || !Number.isInteger(width) || !Number.isInteger(height) || width < 1 || height < 1 || width > 8192 || height > 8192) throw new Error('Invalid QA capture size.');
+      captureOverride = { w: width, h: height }; resize();
+    },
+    readOutput(shadowOnly = false) {
+      const width = canvas.width, height = canvas.height;
+      const target = new WebGLRenderTarget(width, height, { depthBuffer: false });
+      const visible = stage.getRig().group.visible;
+      try {
+        if (shadowOnly) { studio.render(); stage.getRig().group.visible = false; }
+        studio.render();
+        const preview = new Uint8Array(width * height * 4);
+        const gl = renderer.getContext(); gl.readPixels(0, 0, width, height, gl.RGBA, gl.UNSIGNED_BYTE, preview);
+        const output = new Uint8Array(width * height * 4);
+        studio.renderToTarget(target); renderer.readRenderTargetPixels(target, 0, 0, width, height, output);
+        return { preview: Array.from(preview), output: Array.from(output), width, height };
+      } finally { stage.getRig().group.visible = visible; target.dispose(); render(); }
+    },
     pg,
     setImage,
     getImage: () => stage.getImage(),
-    setFit(mode) { stage.setFit(mode); render(); },
-    setPad(value) { stage.setPad(value); render(); },
-    setPadColor(hex) { stage.setPadColor(hex); render(); },
+    setFit(mode) { store.apply({ fit: mode }); render(); },
+    setPad(value) { store.apply({ pad: value }); render(); },
+    setPadColor(hex) { store.apply({ padColor: hex }); render(); },
     setDevice(id) {
-      stage.setDevice(id);
+      store.setDevice(id);
       render();
     },
     getDevice: () => stage.getDevice(),
     getSpec: () => stage.getSpec(),
     setSpec(spec) {
-      stage.setSpec(spec);
+      store.apply({ spec });
       render();
     },
     setScene(id) {
-      studio.setScene(id);
+      store.apply({ scene: id });
       render();
     },
     setPose(id) {
-      stage.setPose(id, pg);
+      store.apply({ pose: id });
       render();
       controller?.start();
     },
@@ -177,7 +259,7 @@ async function boot(): Promise<void> {
     },
     getScene: () => stage.getScene(),
     setToneMapping(id) {
-      studio.setToneMapping(id);
+      store.apply({ tone: id });
       render();
     },
     getToneMapping: () => studio.getToneMapping(),
@@ -196,28 +278,34 @@ async function boot(): Promise<void> {
 
   if (!pg) {
     window.addEventListener('resize', resize);
+    cleanup.push(() => window.removeEventListener('resize', resize));
+    window.visualViewport?.addEventListener('resize', resize, { signal });
     controller = createPoseController(canvas, {
       advance: (dt) => stage.advancePose(dt),
       orbit: (azimuth, elevation) => stage.orbit(azimuth, elevation),
     }, render);
+    cleanup.push(() => controller?.dispose());
   }
   const select = (file: File | undefined): void => {
     if (file) void setImage(file).catch(() => { /* The shared loader shows the error. */ });
   };
   // §4.1 image input remains available in PG; only T-P5 orbit input is omitted there.
-  pick.addEventListener('click', () => input.click());
-  input.addEventListener('change', () => { select(input.files?.[0]); input.value = ''; });
-  canvas.addEventListener('drop', (event) => { event.preventDefault(); select(event.dataTransfer?.files[0]); });
+  pick.addEventListener('click', () => input.click(), { signal });
+  input.addEventListener('change', () => { select(input.files?.[0]); input.value = ''; }, { signal });
+  canvas.addEventListener('drop', (event) => { event.preventDefault(); select(event.dataTransfer?.files[0]); }, { signal });
   window.addEventListener('paste', (event) => {
     const clipboard = event.clipboardData;
     const file = clipboard?.files[0] ?? Array.from(clipboard?.items ?? [])
       .find((item) => item.kind === 'file' && item.type.startsWith('image/'))?.getAsFile() ?? undefined;
     if (file) { event.preventDefault(); select(file); }
-  });
+  }, { signal });
+  window.addEventListener('pagehide', event => { if (!event.persisted) dispose(); }, { signal });
   pick.disabled = false;
-  render();
+  resize();
+  } catch (error) { dispose(); throw error; }
 }
 
 void boot().catch((error: unknown) => {
+  earlyInput.abort();
   showNote(error instanceof Error ? error.message : 'The stage could not start.');
 });

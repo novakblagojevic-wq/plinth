@@ -1,0 +1,51 @@
+html,body { margin:0; height:100%; overflow:hidden; }
+canvas { display:block; }
+body.editor { --ink:#242823; --muted:#666d63; --line:#dce0d7; background:#e9ece5!important; color:var(--ink); font:.875rem/1.45 system-ui,sans-serif; display:grid; grid-template-columns:minmax(0,1fr) 320px; height:100dvh; }
+.editor * { box-sizing:border-box; }
+#workspace { min-width:0; min-height:0; display:flex; justify-content:center; align-items:center; overflow:hidden; }
+.editor #stage { flex:none; background-color:#fff; background-image:conic-gradient(#e2e3e0 25%,transparent 0 50%,#e2e3e0 0 75%,transparent 0); background-size:20px 20px; box-shadow:0 8px 40px #283b3010; }
+#panel { overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; background:#fafbf8; padding:24px 20px max(24px,env(safe-area-inset-bottom)); border-left:1px solid var(--line); min-height:0; scrollbar-gutter:stable; }
+.editor h1 { font-size:1.25rem; line-height:1.2; letter-spacing:-.6px; margin:8px 0 0; font-weight:600; }
+.eyebrow { font-size:.6875rem; font-weight:700; letter-spacing:3px; color:#667d58; }
+.editor header { display:flex; align-items:center; justify-content:space-between; margin-bottom:24px; }
+.editor h2 { font-size:.8125rem; font-weight:650; margin:0 0 12px; }
+.editor section { border-top:1px solid var(--line); padding-top:20px; margin:0 0 22px; }
+.editor label { display:flex; justify-content:space-between; align-items:center; gap:8px; margin-top:12px; font-size:.75rem; color:var(--muted); }
+.editor output { color:var(--ink); font-variant-numeric:tabular-nums; }
+.editor button,.editor select,.editor input { font:inherit; color:inherit; accent-color:#526f43; }
+.editor button,.editor select,.editor input:not([type=range]):not([type=checkbox]) { min-height:44px; border:1px solid #cdd3c7; border-radius:8px; background:#fff; padding:9px 11px; }
+.editor select,.editor input:not([type=checkbox]),.editor #pick,.editor #reset { width:100%; }
+.editor input[type=range] { margin:0; min-height:44px; }
+.editor input[type=checkbox] { width:44px; height:44px; margin:0; flex-shrink:0; }
+.editor input[type=color] { padding:5px!important; }
+.editor button { cursor:pointer; }
+.editor button:hover { background:#edf1e8; }
+.editor :focus-visible { outline:3px solid #557740; outline-offset:2px; }
+.editor [aria-invalid=true] { outline:2px solid #b34731; }
+.hint { color:var(--muted); font-size:.6875rem; margin:9px 0 0; }
+#note,#settings-error { overflow-wrap:anywhere; }
+#note:empty,#settings-error:empty { display:none; }
+.editor #note,.editor #settings-error { font-size:.75rem; background:#fff1e6; padding:10px; border-radius:6px; }
+.looks { display:grid; grid-template-columns:1fr 1fr; gap:8px; }
+.editor .looks button { padding:0; overflow:hidden; text-align:left; }
+.looks img { display:block; width:100%; height:auto; aspect-ratio:8/5; background:#e9ece5; }
+.looks span { display:block; font-size:.6875rem; padding:9px 8px; }
+.editor .looks [aria-pressed=true] { border-color:#526f43; box-shadow:0 0 0 1px #526f43; }
+.editor summary { cursor:pointer; min-height:44px; padding:12px 0; font-size:.8125rem; }
+.editor details { border-top:1px solid var(--line); margin-bottom:18px; }
+.editor details section { border:0; }
+#settings-open,#sheet-close { display:none; }
+body.pg #workspace { display:block; overflow:visible; }
+body.pg #panel,body.pg #settings-open { display:none; }
+body.pg #pick { position:fixed; top:16px; left:16px; padding:10px 16px; cursor:pointer; }
+body.pg #note { position:fixed; bottom:16px; left:16px; right:16px; margin:0; color:white; font:14px system-ui; }
+body.pg #note:not(:empty) { width:fit-content; max-width:calc(100% - 48px); padding:8px; background:#14161a; }
+@media(max-width:899px) {
+  body.editor { grid-template-columns:minmax(0,1fr); grid-template-rows:minmax(0,1fr) auto auto; }
+  .editor #panel { display:none; max-height:min(55dvh,calc(var(--viewport-height,100dvh) * .55)); border-left:0; border-top:1px solid var(--line); border-radius:18px 18px 0 0; padding-top:16px; }
+  .editor.sheet-open #panel { display:block; }
+  .editor #settings-open { display:block; margin:8px 16px max(8px,env(safe-area-inset-bottom)); width:calc(100% - 32px); min-height:44px; background:#526f43; color:#fff; }
+  .editor.sheet-open #settings-open { display:none; }
+  .editor #sheet-close { display:block; min-width:44px; font-size:1.375rem; }
+  .editor header { margin-bottom:18px; }
+}

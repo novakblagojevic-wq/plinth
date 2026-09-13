@@ -131,6 +131,47 @@ try {
     if (errors.length) { annotate('error', `${evidence.name}: page errors: ${errors.join(' | ')}`); failed++; }
     else annotate('warning', `${evidence.name}: named T-P5 candidate uploaded, awaiting visual confirmation`);
   }
+  // T-P6 named evidence only; the 20 legacy diffs and 25 T-P5 captures above stay intact.
+  const panelCases = [
+    ...['studio-phone','dark-laptop','clean-browser','warm-card'].map(composition => ({ name: `composition-${composition}`, query: `composition=${composition}`, size: SIZE })),
+    ...['preset','solid','gradient','transparent'].map(background => ({ name: `background-${background}`, query: `background=${background}`, size: SIZE })),
+    {name:'panel-desktop',query:'ui=1',size:SIZE},
+    {name:'panel-mobile-closed',query:'ui=1',size:{width:400,height:700}},
+    {name:'panel-mobile-open',query:'ui=1&sheet=open',size:{width:400,height:700}},
+  ];
+  for(const evidence of panelCases) {
+    const page=await browser.newPage({viewport:evidence.size,deviceScaleFactor:1});
+    const errors=[];page.on('pageerror',error=>errors.push(String(error)));
+    await page.goto(`${url}?pg=1&${evidence.query}`,{waitUntil:'load'});
+    await page.waitForSelector('html[data-plinth-ready="1"]',{timeout:60000});
+    if(evidence.query.startsWith('composition=')) {
+      const aspect=await page.evaluate(()=>window.__plinth.getSettings().aspect);
+      const dimensions={'4:5':[640,800],'16:9':[1280,720],'1:1':[800,800]}[aspect];
+      await page.evaluate(([w,h])=>window.__plinth.setCaptureSize(w,h),dimensions);
+    }
+    if(!evidence.name.startsWith('panel-')) await page.evaluate(transparent => {
+      document.querySelector('#pick').hidden=true; document.querySelector('#note').hidden=true;
+      if(transparent){document.body.style.background='transparent';document.documentElement.style.background='transparent';}
+      window.__plinth.setDevice(window.__plinth.getDevice());
+    },evidence.name==='background-transparent');
+    if(evidence.name.startsWith('panel-')) await page.screenshot({path:join(OUT,`${evidence.name}.png`)});
+    else await page.locator('#stage').screenshot({path:join(OUT,`${evidence.name}.png`),omitBackground:evidence.name==='background-transparent'});
+    if(evidence.name==='background-transparent'){
+      const png=PNG.sync.read(readFileSync(join(OUT,`${evidence.name}.png`)));
+      if(png.data[3]!==0)throw new Error('Transparent candidate must retain clear alpha.');
+    }
+    captured++;if(errors.length){failed++;annotate('error',`${evidence.name}: ${errors.join(' | ')}`);}
+    else annotate('warning',`${evidence.name}: named T-P6 evidence, awaiting visual confirmation`);
+    await page.close();
+  }
+  // A separate T-P6 sheet leaves the legacy 20-cell contact-sheet helper intact.
+  // All images below are the actual CI candidates above, not regenerated scenes.
+  const sheet=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
+  const figures=panelCases.map(evidence=>`<figure><img src="data:image/png;base64,${readFileSync(join(OUT,`${evidence.name}.png`)).toString('base64')}" alt=""><figcaption>${evidence.name}</figcaption></figure>`).join('');
+  await sheet.setContent(`<!doctype html><meta charset="utf-8"><title>T-P6 review</title><style>body{margin:24px;background:#f0f1ed;color:#242823;font:14px system-ui}h1{font-size:24px}main{display:grid;grid-template-columns:repeat(3,1fr);gap:16px}figure{margin:0;background:white;border:1px solid #cdd3c7;border-radius:8px;overflow:hidden}img{display:block;width:100%;height:320px;object-fit:contain;background:conic-gradient(#ddd 25%,#fff 0 50%,#ddd 0 75%,#fff 0);background-size:20px 20px}figcaption{padding:12px}p{max-width:900px}</style><h1>T-P6 — pregled kompozicija, pozadina i panela</h1><p>CI kandidati za vizuelni pregled. Šahovnica prikazuje providnost. Ovo nije baseline bless; pojedinačne slike su dostupne u istom artefaktu.</p><main>${figures}</main>`);
+  await sheet.evaluate(()=>Promise.all(Array.from(document.images,image=>image.decode())));
+  await sheet.screenshot({path:join(OUT,'tp6-contact-sheet.png'),fullPage:true});
+  await sheet.close();
 } finally {
   await browser.close();
   await server.close();
