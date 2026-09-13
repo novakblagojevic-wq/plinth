@@ -1,4 +1,4 @@
-import { cleanupAll } from '../export/capture';
+import { checkGl, cleanupAll } from '../export/capture';
 import { ACESFilmicToneMapping, AgXToneMapping, Color, Mesh, Vector4, type WebGLRenderTarget, type WebGLRenderer } from 'three';
 import type { Stage } from '../scene';
 import { ContactShadow } from './contactShadow';
@@ -71,6 +71,11 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
     try { renderer.setScissorTest(false); shadow.fit(stage.getWorldBounds()); shadow.render(renderer, stage.scene); shadowDirty = false; }
     finally { renderer.setViewport(viewport); renderer.setScissor(scissor); renderer.setScissorTest(scissorTest); }
   }
+  function render(): void {
+    if (disposed) return;
+    captureShadow(); background.apply(stage.scene, renderer, size.h * size.dpr);
+    (settings.msaa ? msaaPipeline! : pipeline!).render();
+  }
   function initialize(): Promise<void> {
     for (const id of SCENE_IDS) envs.set(id, generateEnvironment(renderer, SCENE_PRESETS[id]));
     shadow = new ContactShadow(); stage.scene.add(shadow.group);
@@ -104,13 +109,14 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
           stage.restoreImageTexture(); await initialize();
           if (disposed) return;
           pipeline!.setSize(size.w, size.h, size.dpr); msaaPipeline?.setSize(size.w, size.h, size.dpr);
-        } catch (error) { release(); throw error; }
+          checkGl(renderer, 'Restoring graphics resources');
+          render();
+          checkGl(renderer, 'Rendering restored preview');
+        } catch (error) {
+          cleanupAll([() => { throw error; }, release, () => stage.releaseGpuResources()]);
+        }
       },
-      render() {
-        if (disposed) return;
-        captureShadow(); background.apply(stage.scene, renderer, size.h * size.dpr);
-        (settings.msaa ? msaaPipeline! : pipeline!).render();
-      },
+      render,
       renderToTarget(target, straightAlpha = false) {
         if (disposed) throw new Error('Studio is disposed.');
         const saved = { background: stage.scene.background, clear: renderer.getClearColor(new Color()), alpha: renderer.getClearAlpha() };

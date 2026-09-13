@@ -126,3 +126,44 @@ it('PNG GPU copy divides half-float RGB before byte quantization exactly once',a
     for(const [i,alpha]of [1,128,255].entries()){expect(samples[i+1]![3]).toBe(alpha);for(const [c,value]of [128,64,32].entries())expect(Math.abs(samples[i+1]![c]!-value)).toBeLessThanOrEqual(1);}
   } finally{await page.close();}
 });
+
+for (const phase of ['resources', 'first-render']) it(`PNG recovery rejects GL-only failure during ${phase}`, async () => {
+  const page = await browser.newPage();
+  try {
+    await page.route('**/src/scene/studio.ts', async route => {
+      const response = await route.fetch(); const source = await response.text();
+      const marker = phase === 'resources' ? 'await initialize();' : 'render();\n';
+      const injection = 'renderer.getContext().bindTexture(-1, null);';
+      let body = source.replace(marker, marker + injection);
+      expect(body).not.toBe(source);
+      if (process.env['PLINTH_PNG_SEED'] === 'recovery-gl') {
+        body = body.replace(/checkGl\(renderer, "(?:Restoring graphics resources|Rendering restored preview)"\);/g, '');
+        expect(body).not.toContain('checkGl(renderer, "Restoring graphics resources")');
+        expect(body).not.toContain('checkGl(renderer, "Rendering restored preview")');
+      }
+      await route.fulfill({ response, body });
+    });
+    await page.goto(url + '?sheet=open');
+    await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60000 });
+    const before = await page.evaluate(async () => {
+      const canvas = document.createElement('canvas'); canvas.width = 16; canvas.height = 16;
+      canvas.getContext('2d')!.fillRect(0, 0, 16, 16); await window.__plinth.setImage(canvas.toDataURL());
+      window.__plinth.applySettings({ tone: 'aces', outputPad: .12 });
+      return { image: window.__plinth.getImage(), settings: window.__plinth.getSettings() };
+    });
+    await page.evaluate(() => {
+      const gl = document.querySelector<HTMLCanvasElement>('#stage')!.getContext('webgl2')!;
+      const extension = gl.getExtension('WEBGL_lose_context'); if (!extension) throw new Error('Missing loss extension');
+      Object.assign(window, { __restore: () => extension.restoreContext() }); extension.loseContext();
+    });
+    await page.waitForFunction(() => window.__plinth.getRecovery() === 'lost');
+    await page.evaluate(() => (window as unknown as { __restore(): void }).__restore());
+    await page.waitForFunction(() => ['ready', 'failed'].includes(window.__plinth.getRecovery()), null, { timeout: 60000 });
+    expect(await page.evaluate(() => window.__plinth.getRecovery())).toBe('failed');
+    expect(await page.locator('#png-export').isDisabled()).toBe(true);
+    expect(await page.locator('#png-download').isVisible()).toBe(false);
+    expect(await page.locator('#png-reload').isVisible()).toBe(true);
+    expect(await page.locator('#png-status').innerText()).toContain('reload the page');
+    expect(await page.evaluate(() => ({ image: window.__plinth.getImage(), settings: window.__plinth.getSettings() }))).toEqual(before);
+  } finally { await page.close(); }
+});

@@ -322,3 +322,21 @@ pogođenog obuhvata, ne izmišljena dozvola za izmenu ugovora.
 ### Owner-requested English interface (2026-09-13)
 
 Novak requests English for both preview and production. This copy-only follow-up includes existing panel labels, composed-look names, HTML language/accessibility labels, PNG status/errors and their literal unit expectations. The write set additionally includes `index.html`, `src/ui/compositions.ts`, `src/ui/panel.test.ts`, and the equivalent English literal in `guards/panel.test.ts` (same assertion). No rendering or export behavior changes.
+
+### PR #19 independent review fixup — recovery GL errors
+
+Review of `15e75a8` found a GL-only error could reach `ready` after restoration.
+`createStudio.recover` now checks restored allocations and the first actual preview
+render before resolving; the render function is shared with ordinary preview.
+Any GL error rejects recovery. Cleanup attempts all Studio resources and the
+remounted Stage texture while retaining CPU bitmap/settings. Error inspection
+throws; it does not discard errors to report success.
+
+Two additive browser regressions inject an actual INVALID_ENUM without a JS
+throw during resource initialization or rendering, using real context loss and
+restore. Both require failed recovery, disabled export, no download, visible
+reload and identical uploaded image/settings. Both passed locally (26.14 s).
+`PLINTH_PNG_SEED=recovery-gl` removes only the new checks via a temporary response
+rewrite; both regressions then fail on ready != failed (27.08 s). The unit
+renderer double now supports the first real restored render and GL inspection.
+Review finding 2 (physical Android/Safari PNG save/open) remains outstanding.

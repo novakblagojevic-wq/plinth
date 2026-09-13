@@ -68,7 +68,8 @@ it('T-P6 cleans acquired studio resources and subscriptions after warm-up failur
 it('T-P7 recovery retains the selected composition state, user bitmap and GPU ownership',async()=>{
   Object.defineProperty(globalThis,'document',{configurable:true,value:{body:{style:{}}}});
   const stage=createStage('phone','soft-studio',.8);const close=vi.fn();stage.setImage({width:4,height:4,close} as never,{width:4,height:4,originalWidth:4,originalHeight:4,downscaled:false,cap:8192,identity:'user'});
-  const renderer={compileAsync:vi.fn().mockResolvedValue(undefined),toneMapping:0,toneMappingExposure:0};
+  const renderer={compileAsync:vi.fn().mockResolvedValue(undefined),toneMapping:0,toneMappingExposure:0,
+    getContext:()=>({isContextLost:()=>false,getError:()=>0,NO_ERROR:0}),getViewport:(v:unknown)=>v,getScissor:(v:unknown)=>v,getScissorTest:()=>false,setViewport:vi.fn(),setScissor:vi.fn(),setScissorTest:vi.fn(),setClearColor:vi.fn()};
   const studio=createStudio(renderer as never,stage,{msaa:false});await studio.ready;
   const changes=vi.fn();const unsubscribe=stage.onStateChange(changes);const before=stage.snapshot();
   await studio.recover();expect(close).not.toHaveBeenCalled();expect(stage.getImage()?.identity).toBe('user');expect(stage.snapshot()).toEqual(before);expect(changes).not.toHaveBeenCalled();
