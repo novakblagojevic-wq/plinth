@@ -1,5 +1,6 @@
 import {
   SRGBColorSpace,
+  Color, Vector4, NoBlending,
   type Texture,
   HalfFloatType,
   WebGLRenderTarget,
@@ -13,6 +14,7 @@ import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
 import { CopyShader } from 'three/addons/shaders/CopyShader.js';
+import { installAlphaSmaa } from './alphaSmaa';
 
 /**
  * PLINTH_SPEC §4.4.5 / §4.4.6 — the render pipeline, and the one rule it
@@ -57,6 +59,8 @@ export interface Pipeline {
   ready: Promise<void>;
   setSize(width: number, height: number, pixelRatio: number): void;
   render(): void;
+  /** Same finishing path into a caller-owned target; no encoder or download. */
+  renderToTarget(target: WebGLRenderTarget): void;
   dispose(): void;
 }
 
@@ -84,6 +88,7 @@ export function createPipeline(
   const ownedPasses: Pass[] = [];
   const textures: Texture[] = [];
   let disposed = false;
+  let outputCopy: ShaderPass | undefined;
 
   // EffectComposer owns its targets/internal copy pass, not the passes we add.
   function dispose(): void {
@@ -91,6 +96,7 @@ export function createPipeline(
     disposed = true;
     for (const t of textures) (t.image as HTMLImageElement).onload = null;
     for (const pass of ownedPasses) pass.dispose();
+    outputCopy?.dispose();
     if (composer) composer.dispose();
     else target.dispose();
   }
@@ -117,6 +123,7 @@ export function createPipeline(
       const lookups = smaa as unknown as { _areaTexture: Texture; _searchTexture: Texture };
       textures.push(lookups._areaTexture, lookups._searchTexture);
       addPass(smaa);
+      installAlphaSmaa(smaa);
       // Start each decode through a promise so a synchronous throw cannot leave
       // an earlier decode rejection unobserved.
       ready = Promise.all(textures.map((t) =>
@@ -139,7 +146,47 @@ export function createPipeline(
         activeComposer.setSize(width, height);
       },
       render() {
-        if (!disposed) activeComposer.render();
+        if (disposed) return;
+        const target = renderer.getRenderTarget();
+        const viewport = renderer.getViewport(new Vector4()); const scissor = renderer.getScissor(new Vector4());
+        const scissorTest = renderer.getScissorTest(); const autoClear = renderer.autoClear;
+        const clear = renderer.getClearColor(new Color()); const alpha = renderer.getClearAlpha();
+        const override = scene.overrideMaterial;
+        try { activeComposer.render(0); }
+        finally {
+          renderer.setRenderTarget(target); renderer.setViewport(viewport); renderer.setScissor(scissor);
+          renderer.setScissorTest(scissorTest); renderer.autoClear = autoClear;
+          renderer.setClearColor(clear, alpha); scene.overrideMaterial = override;
+        }
+      },
+      renderToTarget(destination) {
+        if (disposed) throw new Error('Pipeline is disposed.');
+        const target = renderer.getRenderTarget();
+        const viewport = renderer.getViewport(new Vector4());
+        const scissor = renderer.getScissor(new Vector4());
+        const scissorTest = renderer.getScissorTest();
+        const clear = renderer.getClearColor(new Color());
+        const alpha = renderer.getClearAlpha();
+        const autoClear = renderer.autoClear;
+        const renderToScreen = activeComposer.renderToScreen;
+        const override = scene.overrideMaterial;
+        try {
+          activeComposer.renderToScreen = false;
+          renderer.setScissorTest(false);
+          activeComposer.render(0);
+          outputCopy ??= new ShaderPass(CopyShader);
+          outputCopy.material.toneMapped = false;
+          outputCopy.material.blending = NoBlending;
+          outputCopy.renderToScreen = false;
+          outputCopy.render(renderer, destination, activeComposer.readBuffer, 0, false);
+        } finally {
+          activeComposer.renderToScreen = renderToScreen;
+          scene.overrideMaterial = override;
+          renderer.setRenderTarget(target);
+          renderer.setViewport(viewport); renderer.setScissor(scissor);
+          renderer.setScissorTest(scissorTest); renderer.setClearColor(clear, alpha);
+          renderer.autoClear = autoClear;
+        }
       },
       dispose,
     };

@@ -27,7 +27,7 @@ describe('T-P5 studio shadow lifecycle', () => {
   it('fits measured world bounds, dirties only geometry, retries failures, and disposes ownership', async () => {
     Object.defineProperty(globalThis, 'document', { configurable: true, value: { body: { style: {} } } });
     const stage = createStage('phone', 'soft-studio', 16 / 10);
-    const renderer = { compileAsync: vi.fn().mockResolvedValue(undefined), toneMapping: 0, toneMappingExposure: 0 };
+    const renderer = { compileAsync: vi.fn().mockResolvedValue(undefined), toneMapping: 0, toneMappingExposure: 0, getViewport: vi.fn(v => v), getScissor: vi.fn(v => v), getScissorTest: () => false, setViewport: vi.fn(), setScissor: vi.fn(), setScissorTest: vi.fn(), setClearColor: vi.fn() };
     const studio = createStudio(renderer as never, stage, { msaa: false });
     await studio.ready;
     const shadow = fake.shadows[0]!;
@@ -54,4 +54,14 @@ describe('T-P5 studio shadow lifecycle', () => {
     expect(stage.scene.children).not.toContain(shadow.group);
     expect(shadow.dispose).toHaveBeenCalledTimes(1);
   });
+});
+
+it('T-P6 cleans acquired studio resources and subscriptions after warm-up failure', async () => {
+  const stage = createStage('phone','soft-studio',.8);
+  const renderer = {compileAsync:vi.fn().mockRejectedValue(new Error('warm failed')),toneMapping:0,toneMappingExposure:0};
+  const studio=createStudio(renderer as never,stage,{msaa:false});
+  const shadow=fake.shadows[0]!;
+  await expect(studio.ready).rejects.toThrow('warm failed');
+  studio.dispose();expect(fake.pipeline.dispose).toHaveBeenCalledTimes(1);expect(shadow.dispose).toHaveBeenCalledTimes(1);expect(stage.scene.children).not.toContain(shadow.group);expect(stage.scene.environment).toBeNull();
+  stage.setPose('lean',true);stage.dispose();
 });

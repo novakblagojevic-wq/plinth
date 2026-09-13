@@ -138,3 +138,12 @@ except `three` — everything else is build and test tooling.
 - `lightningcss-win32-x64-msvc@1.33.0`
 - `lightningcss@1.33.0`
 
+
+## T-P6 alpha-aware SMAA adapter
+
+`src/scene/alphaSmaa.ts` adapts the neighborhood blend expressions from
+Three.js **0.185.1** `examples/jsm/shaders/SMAAShader.js` (SMAABlendShader),
+under the same Three.js MIT licence recorded above. Original source and licence
+ship in the pinned dependency (`node_modules/three/LICENSE`). The adapter
+preserves the existing gamma-2.2 opaque interpolation and adds coverage-aware
+alpha handling. No new dependency is introduced.

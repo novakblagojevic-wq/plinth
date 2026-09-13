@@ -2,15 +2,26 @@ import {
   Box3, Color, DirectionalLight, Group, InstancedMesh, Matrix4, Mesh, PerspectiveCamera, Scene,
   SRGBColorSpace, Texture, Vector3,
 } from 'three';
-import { advanceTransition, clampOrbit, clonePose, directionToOrbit, isPoseId, isWideDevice, orbitToDirection, poseValue, type PoseId, type PoseSelection, type PoseTransition, type PoseValue } from './camera/poses';
+import { advanceTransition, clampOrbit, clonePose, clonePoseSnapshot, type PoseSnapshot, directionToOrbit, isPoseId, isWideDevice, orbitToDirection, poseValue, type PoseId, type PoseSelection, type PoseTransition, type PoseValue } from './camera/poses';
 import { buildDevice, type DeviceRig } from './devices/build';
 import { isDeviceId, presetSpec, type DeviceId } from './devices/presets';
 import { invariantViolations, shapeHash, type DeviceSpec } from './devices/spec';
 import { isSceneId, SCENE_PRESETS, type SceneId, type ScenePreset } from './scene/presets';
+import { paddedDistance, validateOutputPad } from './output';
 import type { FitMode, ImageMeta, ImageState } from './screen/types';
+
+export interface StageSettings {
+  device: DeviceId; spec: DeviceSpec; pose: PoseSelection; custom: PoseSnapshot;
+  aspect: number; outputPad: number; fit: FitMode; pad: number; padColor: string;
+}
+export interface PreparedStage { commit(): void; dispose(): void }
 
 /** Renderer-free scene state; interactive scheduling is owned by camera/controller.ts. */
 export interface Stage {
+  snapshot(): StageSettings;
+  prepareSettings(next: StageSettings, immediate?: boolean, changePose?: boolean): PreparedStage;
+  onStateChange(cb: (reason: string) => void): () => void;
+  dispose(): void;
   scene: Scene;
   camera: PerspectiveCamera;
   key: DirectionalLight;
@@ -166,6 +177,10 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   let image: { bitmap: ImageBitmap; texture: Texture; meta: ImageMeta } | null = null;
   let fit: FitMode = 'contain';
   let pad = 0;
+  let outputPad = 0;
+  let disposed = false;
+  const stateListeners = new Set<(reason: string) => void>();
+  const stateChanged = (reason: string): void => { for (const cb of stateListeners) cb(reason); };
   let padColor = '#ffffff';
   const deviceListeners = new Set<() => void>();
   const geometryListeners = new Set<() => void>();
@@ -203,10 +218,11 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
     position: Vector3;
     quaternion: typeof camera.quaternion;
   }
-  function calculateFrame(aspect: number): CameraFrame {
+  function calculateFrame(aspect: number, worldBoundsArg = worldBounds, device = id, pose = display, padding = outputPad): CameraFrame {
+    const worldBounds = worldBoundsArg;
     const size = worldBounds.getSize(new Vector3());
     const target = worldBounds.getCenter(new Vector3());
-    const fov0 = isWideDevice(id) ? WIDE_SCREEN_FOV : CAMERA_FOV;
+    const fov0 = isWideDevice(device) ? WIDE_SCREEN_FOV : CAMERA_FOV;
     const responsive = Math.max(0, Math.min(1, REFERENCE_ASPECT / aspect - 1));
     const fov = fov0 + 4 * responsive;
     const verticalTangent = Math.tan((fov * Math.PI) / 360);
@@ -219,7 +235,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
     const referenceDist = referenceFit / 2 / Math.tan((CAMERA_FOV * Math.PI) / 360) + Math.max(size.z, size.x) / 2;
     const lensScale = Math.tan((CAMERA_FOV * Math.PI) / 360) / Math.tan((fov0 * Math.PI) / 360);
     const candidate = new PerspectiveCamera(fov, aspect, 0.01, 50);
-    candidate.position.copy(target).addScaledVector(display.direction, referenceDist * lensScale);
+    candidate.position.copy(target).addScaledVector(pose.direction, referenceDist * lensScale);
     candidate.up.set(0, 1, 0);
     candidate.lookAt(target);
     candidate.updateMatrixWorld(true);
@@ -236,8 +252,9 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
         offset + Math.abs(local.y) * safetyScale / (NDC_MARGIN * verticalTangent),
       );
     }
+    distance = paddedDistance(distance, padding);
     if (!Number.isFinite(distance) || distance <= 0) throw new Error('Unable to frame device safely.');
-    candidate.position.copy(target).addScaledVector(display.direction, distance);
+    candidate.position.copy(target).addScaledVector(pose.direction, distance);
     candidate.lookAt(target);
     candidate.updateMatrixWorld(true);
     let minDepth = Infinity;
@@ -268,6 +285,9 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
   function frame(aspect = camera.aspect): void {
     // Calculate entirely off-camera so a rejected aspect leaves the visible state intact.
     const next = calculateFrame(aspect);
+    installFrame(next);
+  }
+  function installFrame(next: CameraFrame): void {
     camera.aspect = next.aspect;
     camera.fov = next.fov;
     camera.near = next.near;
@@ -279,11 +299,93 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
     camera.updateMatrixWorld(true);
   }
 
-  applyPreset();
-  applyPose(display);
+  try { applyPreset(); applyPose(display); } catch (error) { rig.dispose(); scene.clear(); throw error; }
 
-  return {
+  const api: Stage = {
     scene, camera, key,
+    snapshot: () => ({ device: id, spec: { ...rig.spec }, pose: selected, custom: { ...clonePose(display), position: posePivot.position.clone() },
+      aspect: camera.aspect, outputPad, fit, pad, padColor }),
+    onStateChange(cb) { stateListeners.add(cb); return () => { stateListeners.delete(cb); }; },
+    dispose() {
+      if (disposed) return; disposed = true;
+      stateListeners.clear(); geometryListeners.clear(); deviceListeners.clear();
+      rig.dispose(); image?.texture.dispose(); image?.bitmap.close(); image = null;
+      scene.clear();
+    },
+    prepareSettings(next, immediate = false, changePose = false) {
+      if (disposed) throw new Error('Stage is disposed.');
+      next = { ...next, spec: { ...next.spec }, custom: clonePoseSnapshot(next.custom) };
+      if (!isDeviceId(next.device)) throw new Error('Unknown device.');
+      const numeric = [next.spec.w, next.spec.h, next.spec.depth, next.spec.cornerRadius, next.spec.bezel, next.spec.screenInset, next.spec.frameMetalness, next.spec.frameRoughness, next.spec.glassClearcoat, next.spec.hingeAngle];
+      if (numeric.some(value => !Number.isFinite(value)) || invariantViolations(next.spec).length
+        || !['none', 'plate', 'hinge'].includes(next.spec.standType)
+        || [next.spec.frameMetalness, next.spec.frameRoughness, next.spec.glassClearcoat].some(value => value < 0 || value > 1)) throw new Error('Invalid device spec.');
+      if (next.pose !== null && !isPoseId(next.pose)) throw new Error('Unknown pose.');
+      if (!Number.isFinite(next.aspect) || next.aspect <= 0) throw new Error('Invalid aspect.');
+      validateOutputPad(next.outputPad);
+      if (!['contain', 'cover'].includes(next.fit) || !Number.isFinite(next.pad) || next.pad < 0 || next.pad > 0.25
+        || !/^#[0-9a-f]{6}$/i.test(next.padColor)) throw new Error('Invalid image settings.');
+      const custom = next.custom;
+      if ([...custom.rotation.toArray(), ...custom.direction.toArray(), ...custom.position.toArray()].some(value => !Number.isFinite(value))
+        || Math.abs(custom.rotation.length() - 1) > 1e-6 || Math.abs(custom.direction.length() - 1) > 1e-6) throw new Error('Invalid custom pose.');
+      const orbit = directionToOrbit(custom.direction);
+      const legal = clampOrbit(orbit.azimuth, orbit.elevation);
+      if (Math.abs(orbit.azimuth - legal.azimuth) > 1e-9 || Math.abs(orbit.elevation - legal.elevation) > 1e-9) throw new Error('Invalid custom orbit.');
+      const shapeChanged = next.device !== id || shapeHash(next.spec) !== shapeHash(rig.spec);
+      let candidateRig: DeviceRig | null = null;
+      let committed = false;
+      try {
+        if (shapeChanged) {
+          candidateRig = buildDevice(next.spec, next.device === 'browser');
+          if (image) candidateRig.setImage(image.texture, { w: image.meta.width, h: image.meta.height });
+          candidateRig.setImageFit(next.fit, next.pad, next.padColor);
+        }
+        const points = candidateRig ? cachedLocalGeometry(candidateRig.group, next.device, next.spec) : localGeometry;
+        const target = next.pose ? poseValue(next.pose, next.device) : clonePose(custom);
+        let nextDisplay = clonePose(display);
+        let nextTransition = transition;
+        if (changePose) {
+          nextTransition = immediate || next.pose === null ? null : { start: clonePose(display), target, elapsed: 0 };
+          if (!nextTransition) nextDisplay = target;
+        } else if (next.device !== id && next.pose) {
+          if (transition) nextTransition = { start: clonePose(display), target, elapsed: 0 };
+          else nextDisplay = target;
+        }
+        const geometryDirty = shapeChanged || !sameRotation(display, nextDisplay);
+        const pivot = new Group(); pivot.quaternion.copy(nextDisplay.rotation);
+        const raw = boundsFromLocal(points, pivot); const centre = raw.getCenter(new Vector3());
+        pivot.position.set(-centre.x, -raw.min.y, -centre.z);
+        const bounds = boundsFromLocal(points, pivot);
+        const framing = calculateFrame(next.aspect, bounds, next.device, nextDisplay, next.outputPad);
+        // Validate the endpoint too before beginning a live transition.
+        if (nextTransition) {
+          const end = new Group(); end.quaternion.copy(target.rotation);
+          const rawEnd = boundsFromLocal(points, end); const c = rawEnd.getCenter(new Vector3());
+          end.position.set(-c.x, -rawEnd.min.y, -c.z);
+          calculateFrame(next.aspect, boundsFromLocal(points, end), next.device, target, next.outputPad);
+        }
+        return {
+          commit() {
+            if (committed) return;
+            committed = true;
+            const previous = rig;
+            if (candidateRig) {
+              posePivot.remove(previous.group); rig = candidateRig; rig.group.name = 'device-rig';
+              posePivot.add(rig.group);
+            } else rig.update(next.spec);
+            id = next.device; selected = next.pose; display = nextDisplay; transition = nextTransition;
+            localGeometry = points; worldBounds = bounds; outputPad = next.outputPad;
+            fit = next.fit; pad = next.pad; padColor = next.padColor.toLowerCase();
+            posePivot.position.copy(pivot.position); posePivot.quaternion.copy(pivot.quaternion);
+            scene.updateMatrixWorld(true); installFrame(framing); bindImage();
+            if (candidateRig) previous.dispose();
+            if (geometryDirty) changed();
+            deviceChanged(); stateChanged('settings');
+          },
+          dispose() { if (!committed) { candidateRig?.dispose(); candidateRig = null; } },
+        };
+      } catch (error) { candidateRig?.dispose(); throw error; }
+    },
     setDevice(next) {
       if (!isDeviceId(next)) throw new Error('Unknown device.');
       if (next === id) return;
@@ -406,4 +508,9 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
     onDeviceChange(cb) { deviceListeners.add(cb); return () => deviceListeners.delete(cb); },
     onGeometryChange(cb) { geometryListeners.add(cb); return () => geometryListeners.delete(cb); },
   };
+  for (const name of ['setDevice', 'setSpec', 'setAspect', 'setScene', 'setPose', 'advancePose', 'orbit', 'setImage', 'setFit', 'setPad', 'setPadColor'] as const) {
+    const method = api[name] as (...args: never[]) => unknown;
+    Object.assign(api, { [name]: (...args: never[]) => { const result = method(...args); stateChanged(name); return result; } });
+  }
+  return api;
 }

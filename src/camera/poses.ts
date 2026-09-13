@@ -15,6 +15,13 @@ export interface PoseValue {
   direction: Vector3;
 }
 
+/** Complete displayed device transform. Position is derived by the floor rule,
+ * never an unconstrained pan control. */
+export interface PoseSnapshot extends PoseValue { position: Vector3 }
+export function clonePoseSnapshot(value: PoseSnapshot): PoseSnapshot {
+  return { ...clonePose(value), position: value.position.clone() };
+}
+
 export interface PoseTransition {
   start: PoseValue;
   target: PoseValue;

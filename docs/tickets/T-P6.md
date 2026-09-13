@@ -5,11 +5,20 @@ P-4/P-6/P-7/P-9/P-10/P-11/P-12/P-13. Autor ticketa: Codex, planska sesija.
 Implementator i tačan model evidentiraju se pri početku; reviewer je druga,
 sveža sesija. Jedan implementator, jedan implementation PR.
 
-Status: **tiket pripremljen za nezavisan pregled; implementacija nije počela.**
-P-13 je vlasnički odobren, ali ovaj planning PR još nije spojen. Build polazi
-od main-a koji sadrži pregledane research, P-13 i ovaj tiket: upisati tačan SHA
-posle merge-a. Ne tvrditi da su planning CI ili istraživačke probe production
-acceptance. PNG download pripada T-P7; hash/shortcuts T-P9; motion T-P8a.
+Status: **implementation candidate prepared; final CI/PG and independent review
+are recorded on the implementation PR before acceptance.**
+Builder: Codex; the exact backend model identifier is not exposed.
+Base: `c9a376418cebf33d7c1d2967aba9d37b6627d648` (planning PR #14 merged),
+including PR #16's pipeline resource lifecycle fix. The planning package is
+active on this base. PNG download remains T-P7, hash/shortcuts T-P9, motion T-P8a.
+
+Linux setup on this base: Node 24.19.0, `npm ci --no-audit --no-fund`,
+`npm run ci` (46 guards, 88 unit tests, typecheck) and `npm run build` passed.
+Playwright 1.63.0 / Chromium 153.0.8010.12 (revision 1243), SwiftShader;
+Three.js 0.185.1 and all lockfile pins unchanged. Direct local implementation,
+not an Astra runner packet; no T-P5 profile was reused. GitHub connector
+permissions confirmed read/push access; publication uses Git data APIs after
+local pre-push CI, with full Git tree equality checked against the local commit.
 
 ## Research pass i disposition
 
@@ -258,3 +267,72 @@ uvoditi multi-device scene, nove lighting scene, hash, video ili PNG download;
 brendirane uređaje; aktivna export dugmad za nedovršene funkcije; samostalni
 baseline bless, self-review ili merge. Normativni gap je TODO(spec) i stop
 pogođenog obuhvata, ne prilagođavanje ugovora da bi test prošao.
+
+
+## Implementation surfaces and evidence handoff
+
+- Scope 1/6: `src/settings.ts` owns atomic prepared changes and subscribes to
+  Stage notifications; `src/scene.ts:prepareSettings` validates and prepares
+  candidate geometry/camera before mutation. Custom snapshots include device
+  position/rotation and camera direction; translation is derived by the floor
+  rule, not an extra pan control. `src/ui/compositions.ts` is the complete table.
+- Scope 2/7/8: `src/ui/panel.ts`, `panel.css`, `index.html` and `src/main.ts`
+  provide native controls, a 320px desktop panel, nonmodal sheet, focus/error
+  handling and viewport sizing. The image loader remains the existing owner.
+- Scope 3: `src/output.ts` contains literal P-13 dimensions and padding;
+  `src/scene.ts:calculateFrame` reapplies the projection/near/far safety checks.
+- Scope 4/5: `src/scene/background.ts` samples a vertical encoded-sRGB gradient
+  per output row. `alphaSmaa.ts` checks every patched pinned shader expression.
+  `pipeline.ts` and `studio.ts` share SMAA finishing, expose target rendering,
+  restore temporary render state and release acquired resources on failure.
+  The existing PR #16 resource tests and all their assertions are retained.
+- Scope 9: existing PG cases remain; 11 named T-P6 cases are added. Local
+  screenshots are diagnostics; owner review uses the CI pg-candidates artifact.
+  The four 240×150 thumbnails are generated from the committed demo with one
+  temporary renderer by `scripts/composition-thumbnails.mjs`.
+
+F1–F3, F9–F12 are implemented at the surfaces above. F4/F5/F15 are covered by
+production alpha blending and actual pipeline tests. F6–F8 share the P-13
+contract here; PNG encoding, exact output-size hardware admission, download
+and context-loss recovery remain T-P7. F13 preserves the 20 automatic + 25
+named references without touching fixtures. F14 uses direct local acceptance,
+not a broader runner profile. No new normative decision or TODO(spec).
+
+Verification commands (results and exact published head are attached to the PR):
+
+```sh
+npm run ci
+npm run build
+npm run pg:capture
+node scripts/composition-thumbnails.mjs
+```
+
+New guard negative controls run without persistent source changes:
+`PLINTH_ALPHA_SEED=original` must fail the controlled blend oracle;
+`PLINTH_ALPHA_SEED=double-tone` must fail actual pipeline colour/alpha checks;
+`PLINTH_PANEL_SEED=overlay` must fail the mobile reserved-space assertion.
+Each is followed by unseeded checks. These test-only response mutations neither
+change the product nor alter fixtures or thresholds.
+
+Actual render matrix: all five devices × four scenes × AgX/ACES × five aspects
+(200 combinations), DPR1, explicit 160×160 / 160×200 / 320×180 / 180×320 /
+300×100 QA frames. Every combination uses a transparent input, compares
+independent canvas and target outputs, checks opaque parity and composites the
+same premultiplied foreground over black, white and a coloured checker. A
+shadow-only QA read retains the captured contact shadow while hiding the device,
+so partial alpha is not inferred solely from device edges. Separate controlled
+SMAA tests cover 128 fixture combinations; gradient tests check encoded rows.
+PNG byte transport and the full P-13 export-size table remain T-P7 acceptance.
+
+UI matrix: 1280×800 desktop, 400×700 and 700×400 mobile, 820×1180 tablet;
+real Chromium touch scroll/slider/orbit/cancel, keyboard focus/Escape/Tab,
+200% text, native picker, shared QA updates and image-preserving reset.
+Existing T-P3 file-backed drop/paste/picker and T-P5 touch/lost-capture tests
+remain additive regression coverage. No physical phone/iPad GPU claim.
+Composition apply durations are observations from one Linux/SwiftShader
+sequence, not a §6 performance PASS; the full five-run T-P10 gate is unchanged.
+
+**Novak reviews:** the four composition shots, transparent edge/shadow and
+gradient shots, desktop controls and open/closed mobile sheet in the CI contact
+sheet. Approval of that appearance does not by itself bless new baselines or
+merge the implementation. Builder does not issue its own review verdict.
