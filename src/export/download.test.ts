@@ -5,7 +5,7 @@ it('one job, snapshot name, URL replacement/dispose and no stale success',async(
   let resolve!: (b:Blob)=>void;
   const encode=vi.fn(()=>new Promise<Blob>(r=>{resolve=r;}));const urls={createObjectURL:vi.fn(()=> 'blob:one'),revokeObjectURL:vi.fn()};
   const job=createDownload(capture,encode,urls);const first=job.run(1);
-  await expect(job.run(2)).rejects.toThrow('već');resolve(new Blob());await first;
+  await expect(job.run(2)).rejects.toThrow('already');resolve(new Blob());await first;
   expect(job.get().result?.filename).toBe('plinth-phone-soft-studio-1x1-1x.png');
   const next=job.run(2);expect(urls.revokeObjectURL).toHaveBeenCalledWith('blob:one');job.invalidate('lost');resolve(new Blob());await next;
   expect(job.get()).toEqual({busy:false,message:'lost'});expect(urls.createObjectURL).toHaveBeenCalledTimes(1);

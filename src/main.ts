@@ -195,7 +195,7 @@ async function boot(): Promise<void> {
   let panel: ReturnType<typeof createPanel> | undefined;
   let qaShadowOnly = false;
   const exporter = createDownload(scale => {
-    if (disposed || recoveryState !== 'ready') throw new Error('Prikaz nije spreman za PNG.');
+    if (disposed || recoveryState !== 'ready') throw new Error('The preview is not ready for PNG export.');
     const state = store.get(); const visible = stage.getRig().group.visible;
     if (qaShadowOnly) { studio.render(); stage.getRig().group.visible = false; }
     try { return capturePng(renderer, stage, studio, { aspect: state.aspect, device: state.device, scene: state.scene, scale }, ready); }
@@ -203,12 +203,12 @@ async function boot(): Promise<void> {
   });
   cleanup.push(() => exporter.dispose());
   const recovery = createRecovery(canvas, {
-    invalidate: () => cleanupAll([() => exporter.invalidate('Obnavljanje prikaza…'), () => studio.suspend(), () => stage.releaseGpuResources()]),
+    invalidate: () => cleanupAll([() => exporter.invalidate('Restoring the preview…'), () => studio.suspend(), () => stage.releaseGpuResources()]),
     restore: async () => { await studio.recover(); },
     state(value) {
       recoveryState = value; panel?.setRecovery(value);
-      if (value === 'ready') { exporter.invalidate('Prikaz je obnovljen. Možeš ponovo izvesti PNG.'); if (note.textContent === 'Obnavljanje prikaza. Slika ostaje u ovoj kartici.') showNote(''); resize(); render(); controller?.start(); }
-      else if (value !== 'disposed') { showNote('Obnavljanje prikaza. Slika ostaje u ovoj kartici.'); }
+      if (value === 'ready') { exporter.invalidate('The preview has been restored. You can export PNG again.'); if (note.textContent === 'Restoring the preview. Your image stays in this tab.') showNote(''); resize(); render(); controller?.start(); }
+      else if (value !== 'disposed') { showNote('Restoring the preview. Your image stays in this tab.'); }
     },
   });
   cleanup.push(() => recovery.dispose());
@@ -237,7 +237,7 @@ async function boot(): Promise<void> {
       let operation: Promise<void>;
       try { operation = exporter.run(scale); } finally { qaShadowOnly = false; }
       await operation;
-      const result = exporter.get().result; if (!result) throw new Error('PNG nije dostupan.'); return result;
+      const result = exporter.get().result; if (!result) throw new Error('PNG is unavailable.'); return result;
     },
     getRecovery: () => recovery.get(),
     getSettings: () => store.get(),

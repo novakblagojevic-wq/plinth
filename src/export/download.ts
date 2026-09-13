@@ -20,17 +20,17 @@ export function createDownload(capture: (scale: ExportScale) => CapturedPng,
     subscribe(fn: (value: DownloadState) => void) { listeners.add(fn); return () => { listeners.delete(fn); }; },
     invalidate,
     async run(scale: ExportScale): Promise<void> {
-      if (disposed || running) throw new Error('Izvoz nije dostupan ili je već u toku.');
+      if (disposed || running) throw new Error('Export is unavailable or already in progress.');
       invalidate(); running = true; abort = new AbortController(); const current = token;
-      state = { busy: true, message: 'Priprema PNG slike…' }; emit();
+      state = { busy: true, message: 'Preparing PNG…' }; emit();
       try {
         const { pixels, width, height, filename } = capture(scale);
         const blob = await encode(straightPixels(pixels, width, height, false), width, height, { signal: abort.signal });
         if (disposed || current !== token) return;
         const url = urls.createObjectURL(blob);
-        state = { busy: true, message: `${width} × ${height} — PNG je spreman.`, result: { url, width, height, filename } };
+        state = { busy: true, message: `${width} × ${height} — PNG is ready.`, result: { url, width, height, filename } };
       } catch (error) {
-        if (current === token && !disposed) state = { busy: true, message: error instanceof Error ? error.message : 'PNG nije napravljen.' };
+        if (current === token && !disposed) state = { busy: true, message: error instanceof Error ? error.message : 'The PNG could not be created.' };
         throw error;
       } finally {
         running = false;

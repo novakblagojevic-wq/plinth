@@ -117,3 +117,5 @@ in the T-P7 ticket and implementation PR. No video export is implied.
 ## Licence
 
 MIT. Dependency licences are recorded in [`LICENSES.md`](LICENSES.md).
+
+The preview and production interface use English, including controls, accessibility labels, export status and error messages.

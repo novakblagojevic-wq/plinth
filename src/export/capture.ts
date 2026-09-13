@@ -7,13 +7,13 @@ export interface CapturedPng extends ExportPlan { pixels: Uint8Array; straightAl
 export function cleanupAll(actions: (() => void)[]): void {
   const errors: unknown[] = [];
   for (const action of actions) try { action(); } catch (error) { errors.push(error); }
-  if (errors.length) throw new AggregateError(errors, 'Vraćanje prikaza nije uspelo.');
+  if (errors.length) throw new AggregateError(errors, 'The preview could not be restored.');
 }
 export function checkGl(renderer: WebGLRenderer, phase: string): void {
   const gl = renderer.getContext();
-  if (gl.isContextLost()) throw new Error(`${phase}: grafički prikaz je izgubljen.`);
+  if (gl.isContextLost()) throw new Error(`${phase}: the graphics context was lost.`);
   const error = gl.getError();
-  if (error !== gl.NO_ERROR) throw new Error(`${phase}: grafička greška ${error}.`);
+  if (error !== gl.NO_ERROR) throw new Error(`${phase}: graphics error ${error}.`);
 }
 /** Synchronous GPU transaction; no input/rAF can interleave with its snapshot. */
 export function capturePng(renderer: WebGLRenderer, stage: Stage, studio: Studio,
@@ -23,7 +23,7 @@ export function capturePng(renderer: WebGLRenderer, stage: Stage, studio: Studio
   const plan = preflight(request, { texture: gl.getParameter(gl.MAX_TEXTURE_SIZE) as number,
     renderbuffer: gl.getParameter(gl.MAX_RENDERBUFFER_SIZE) as number,
     viewport: [viewportLimit[0]!, viewportLimit[1]!], healthy: !gl.isContextLost(), ready });
-  checkGl(renderer, 'Pre izvoza');
+  checkGl(renderer, 'Before export');
   const size = renderer.getSize(new Vector2()), dpr = renderer.getPixelRatio();
   const canvas = renderer.domElement, css = canvas.style.cssText;
   const targetBefore = renderer.getRenderTarget();
@@ -38,13 +38,13 @@ export function capturePng(renderer: WebGLRenderer, stage: Stage, studio: Studio
       renderer.setPixelRatio(1);
       target = new WebGLRenderTarget(plan.width, plan.height, { depthBuffer: false, stencilBuffer: false, samples: 0 });
       renderer.setRenderTarget(target);
-      checkGl(renderer, 'Alokacija');
-      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('Izlazna površina nije potpuna.');
+      checkGl(renderer, 'Allocation');
+      if (gl.checkFramebufferStatus(gl.FRAMEBUFFER) !== gl.FRAMEBUFFER_COMPLETE) throw new Error('The output render target is incomplete.');
       renderer.setScissorTest(false);
-      studio.renderToTarget(target, true); checkGl(renderer, 'Renderovanje');
+      studio.renderToTarget(target, true); checkGl(renderer, 'Rendering');
       pixels = new Uint8Array(plan.width * plan.height * 4);
       renderer.readRenderTargetPixels(target, 0, 0, plan.width, plan.height, pixels);
-      checkGl(renderer, 'Čitanje piksela');
+      checkGl(renderer, 'Reading pixels');
     });
   } finally {
     cleanupAll([
@@ -57,6 +57,6 @@ export function capturePng(renderer: WebGLRenderer, stage: Stage, studio: Studio
       () => { renderer.autoClear = autoClear; },
     ]);
   }
-  if (!pixels) throw new Error('PNG pikseli nisu dostupni.');
+  if (!pixels) throw new Error('PNG pixels are unavailable.');
   return { ...plan, pixels, straightAlpha: true };
 }

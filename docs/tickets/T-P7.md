@@ -318,3 +318,7 @@ pogođenog obuhvata, ne izmišljena dozvola za izmenu ugovora.
   pod postojećim DPR cap-om 2.
 - Fizički Android i iPad/iPhone save/open i veće podržane skale ostaju otvoren
   vlasnički dokaz. Nema samostalnog review/merge verdict-a ili baseline bless-a.
+
+### Owner-requested English interface (2026-09-13)
+
+Novak requests English for both preview and production. This copy-only follow-up includes existing panel labels, composed-look names, HTML language/accessibility labels, PNG status/errors and their literal unit expectations. The write set additionally includes `index.html`, `src/ui/compositions.ts`, `src/ui/panel.test.ts`, and the equivalent English literal in `guards/panel.test.ts` (same assertion). No rendering or export behavior changes.
