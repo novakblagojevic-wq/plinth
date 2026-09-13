@@ -1,6 +1,6 @@
 # T-P7 — PNG koji korisnik stvarno preuzima
 
-Status: **planning candidate; nije odobrena implementacija**.
+Status: **planning paket pregledan i spojen kroz PR #18; implementacija u toku**.
 Osnova: main `4bfa3ac05489d22529dcac84f2b18424add5ba32` (T-P6 PR #17 spojen).
 Autor: Codex, planska sesija; tačan backend identifikator nije izložen.
 Dokument od značaja: PLINTH_SPEC §2–§3, §4.1/§4.3–§4.6/§4.9, §7,
@@ -258,3 +258,85 @@ batch/multi-device; menjati preset proporcije; preimenovati proizvod;
 proglasiti emulator fizičkim mobilnim PASS-om; samostalno bless-ovati,
 review-ovati ili merge-ovati svoj rad. Normativni gap → TODO(spec) i stop
 pogođenog obuhvata, ne izmišljena dozvola za izmenu ugovora.
+
+
+## Implementacioni zapis (2026-09-13; u toku)
+
+- Autor: Codex; backend identifikator nije izložen. Osnova `9e09a01ee112c609d5da656a21fcff1f08e773b2`.
+- Linux, Node 24.19.0, Chromium 153.0.8010.12 / revision1243, SwiftShader.
+  `npm ci --no-audit --no-fund` PASS; početni `npm run ci` 57/57 guards
+  (370.09 s), typecheck, 112/112 unit (7.72 s); build PASS.
+- Prva merna proba: 1080×1350 393 ms; 5760×3240 4425 ms, uključujući
+  transfer PNG-a do nezavisnog decoder-a. To nije obećanje brzine telefona.
+  GPU limiti: texture/renderbuffer/obe viewport komponente 8192.
+  Procena punog 400-output prolaza: približno 10–20 minuta sa nezavisnim
+  canvas readback-om/transferom i poređenjem, jedan warm context, sekvencijalno.
+- F4: post-RGBA8 unpremultiply u prvoj implementaciji dao je RGB maksimum
+  2.22353 u punom 1920×1080 transparentnom poređenju (phone/soft-studio/agx).
+  P-13(3) izričito dopušta konverziju pre/posle RGBA8 pod istim pragovima.
+  Sada se RGB deli alpha-om u završnom copy pass-u iz half-float izvora PRE
+  RGBA8 kvantizacije. Readback je straight; CPU radi jedan flip i RGB0
+  normalizaciju pri alpha0. Nema novog tone/transfer prolaza, shader clamp-a
+  prema alpha ili promene alphaSmaa ugovora. Pragovi nisu promenjeni.
+- Capture: 48 B/px + 32 MiB. GPU target-i vraćeni/oslobođeni pre kompresije.
+  CPU: ulaz 4 B/px, redni buffer do 23040 B, scanline/compressor blokovi
+  do 65535 B (native interni izlaz prema API-ju), zadržani IDAT ~4 B/px u
+  najgorem stored slučaju, Blob kopija ~4 B/px; konzervativna dodatna kopija
+  i dalje ostaje ispod capture inventara. CompressionStream interne alokacije,
+  driver, postojeći preview i upload nisu merena slobodna memorija (§P-13).
+- Puni acceptance, negativni browser slučajevi i fizički uređaji još nisu PASS.
+
+- F7 dodatni izvedeni nalaz: prvi stvarni WEBGL_lose_context test je otkrio
+  INVALID_OPERATION pri brisanju starih GPU handle-ova posle contextrestored.
+  Stari Studio/Stage GPU resursi sada se oslobađaju u contextlost događaju,
+  dok CPU bitmap i parametri ostaju; nova generacija se kreira tek na restore.
+  Stvarni test sada prolazi, uključujući PNG i očitavanje očekivane boje
+  korisničke slike, bez starih-handle GL grešaka. Nema gutanja getError da bi
+  neuspešna obnova izgledala uspešno.
+- Lokalna puna matrica: 15 dimenzija + 400 poređenja PASS; opaque max1,
+  transparent composite max1.78824, alpha max1. Ovaj prvi puni prolaz je
+  pre poslednjih recovery-only i dodatnih QA/artifact provera; konačan PNG
+  workflow ponavlja acceptance na objavljenom implementation head-u.
+
+- Svih 15 veličina ponovljeno uz test-only SHA-256 posmatranje stvarnog
+  straight RGBA ulaza: nezavisni pngjs decoder + Node digest odgovaraju ulazu
+  byte-for-byte. Posmatrač je Playwright route u acceptance skriptu, nije deo
+  runtime aplikacije. `--probe` ostaje neinstrumentisana merna proba.
+- Izvedeni negativni prolazi (potom vraćen originalni sadržaj): PNG flip,
+  lost-alpha, missing-unpremultiply CPU i stvarni GPU copy svi padaju na
+  literalnim pixel assertion-ima; ispravni odgovarajući testovi PASS.
+  Postojeći controlled original-SMAA seed pada max72 >1; postojeći
+  double-tone seed pada na invalid-premult assertion-u (17067 !=0).
+  Nije korišćen import/launch failure kao negativni dokaz.
+
+- Završni lokalni `npm run ci`: 64/64 guards (393.95 s), typecheck,
+  161/161 unit (7.87 s); `npm run build` PASS (403 ms), `git diff --check` PASS.
+  Browser guards uključuju stvarni desktop click/mobile tap download, MIME,
+  filename/decode, allocation/FBO/render/readback/encode failure, stvarni
+  context loss/restore i injected restore failure. DPR1/2/3 transakcije su
+  dodatno proverene unit testovima; mobilni viewport ima DPR3, preview ostaje
+  pod postojećim DPR cap-om 2.
+- Fizički Android i iPad/iPhone save/open i veće podržane skale ostaju otvoren
+  vlasnički dokaz. Nema samostalnog review/merge verdict-a ili baseline bless-a.
+
+### Owner-requested English interface (2026-09-13)
+
+Novak requests English for both preview and production. This copy-only follow-up includes existing panel labels, composed-look names, HTML language/accessibility labels, PNG status/errors and their literal unit expectations. The write set additionally includes `index.html`, `src/ui/compositions.ts`, `src/ui/panel.test.ts`, and the equivalent English literal in `guards/panel.test.ts` (same assertion). No rendering or export behavior changes.
+
+### PR #19 independent review fixup — recovery GL errors
+
+Review of `15e75a8` found a GL-only error could reach `ready` after restoration.
+`createStudio.recover` now checks restored allocations and the first actual preview
+render before resolving; the render function is shared with ordinary preview.
+Any GL error rejects recovery. Cleanup attempts all Studio resources and the
+remounted Stage texture while retaining CPU bitmap/settings. Error inspection
+throws; it does not discard errors to report success.
+
+Two additive browser regressions inject an actual INVALID_ENUM without a JS
+throw during resource initialization or rendering, using real context loss and
+restore. Both require failed recovery, disabled export, no download, visible
+reload and identical uploaded image/settings. Both passed locally (26.14 s).
+`PLINTH_PNG_SEED=recovery-gl` removes only the new checks via a temporary response
+rewrite; both regressions then fail on ready != failed (27.08 s). The unit
+renderer double now supports the first real restored render and GL inspection.
+Review finding 2 (physical Android/Safari PNG save/open) remains outstanding.

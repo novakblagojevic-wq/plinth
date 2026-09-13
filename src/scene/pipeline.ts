@@ -1,3 +1,4 @@
+import { cleanupAll } from '../export/capture';
 import {
   SRGBColorSpace,
   Color, Vector4, NoBlending,
@@ -60,7 +61,7 @@ export interface Pipeline {
   setSize(width: number, height: number, pixelRatio: number): void;
   render(): void;
   /** Same finishing path into a caller-owned target; no encoder or download. */
-  renderToTarget(target: WebGLRenderTarget): void;
+  renderToTarget(target: WebGLRenderTarget, straightAlpha?: boolean): void;
   dispose(): void;
 }
 
@@ -95,10 +96,8 @@ export function createPipeline(
     if (disposed) return;
     disposed = true;
     for (const t of textures) (t.image as HTMLImageElement).onload = null;
-    for (const pass of ownedPasses) pass.dispose();
-    outputCopy?.dispose();
-    if (composer) composer.dispose();
-    else target.dispose();
+    cleanupAll([...ownedPasses.map(pass => () => pass.dispose()), () => outputCopy?.dispose(),
+      () => { if (composer) composer.dispose(); else target.dispose(); }]);
   }
 
   function addPass(pass: Pass): void {
@@ -159,7 +158,7 @@ export function createPipeline(
           renderer.setClearColor(clear, alpha); scene.overrideMaterial = override;
         }
       },
-      renderToTarget(destination) {
+      renderToTarget(destination, straightAlpha = false) {
         if (disposed) throw new Error('Pipeline is disposed.');
         const target = renderer.getRenderTarget();
         const viewport = renderer.getViewport(new Vector4());
@@ -174,18 +173,27 @@ export function createPipeline(
           activeComposer.renderToScreen = false;
           renderer.setScissorTest(false);
           activeComposer.render(0);
-          outputCopy ??= new ShaderPass(CopyShader);
+          outputCopy ??= new ShaderPass({ ...CopyShader,
+            uniforms: { ...CopyShader.uniforms, straightAlpha: { value: false } },
+            fragmentShader: 'uniform bool straightAlpha;\n' + CopyShader.fragmentShader.replace(
+              'gl_FragColor = opacity * texel;',
+              'if (straightAlpha) texel.rgb = texel.a > 0.0 ? texel.rgb / texel.a : vec3(0.0); gl_FragColor = opacity * texel;',
+            ),
+          });
+          // P-13(3): divide before RGBA8 quantization, preserving half-float
+          // edge precision. No tone map, OETF or RGB-to-alpha shader clamp.
+          outputCopy.uniforms['straightAlpha']!.value = straightAlpha;
           outputCopy.material.toneMapped = false;
           outputCopy.material.blending = NoBlending;
           outputCopy.renderToScreen = false;
           outputCopy.render(renderer, destination, activeComposer.readBuffer, 0, false);
         } finally {
-          activeComposer.renderToScreen = renderToScreen;
-          scene.overrideMaterial = override;
-          renderer.setRenderTarget(target);
-          renderer.setViewport(viewport); renderer.setScissor(scissor);
-          renderer.setScissorTest(scissorTest); renderer.setClearColor(clear, alpha);
-          renderer.autoClear = autoClear;
+          cleanupAll([
+            () => { activeComposer.renderToScreen = renderToScreen; scene.overrideMaterial = override; renderer.autoClear = autoClear; },
+            () => renderer.setRenderTarget(target), () => renderer.setViewport(viewport),
+            () => renderer.setScissor(scissor), () => renderer.setScissorTest(scissorTest),
+            () => renderer.setClearColor(clear, alpha),
+          ]);
         }
       },
       dispose,

@@ -92,7 +92,7 @@ it('T-P6 review: invalid edits remain errors until corrected or replaced by rese
     expect(await width.getAttribute('aria-invalid')).toBe('true');
     await height.fill('160');
     expect(await width.inputValue()).toBe('19');expect(await width.getAttribute('aria-invalid')).toBe('true');
-    expect(await error.innerText()).toContain('Širina');
+    expect(await error.innerText()).toContain('Width');
     expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.072);
     await page.locator('#reset').click();
     expect(await width.inputValue()).toBe('72');expect(await width.getAttribute('aria-invalid')).toBeNull();

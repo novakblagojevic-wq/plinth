@@ -49,3 +49,10 @@ body.pg #note:not(:empty) { width:fit-content; max-width:calc(100% - 48px); padd
   .editor #sheet-close { display:block; min-width:44px; font-size:1.375rem; }
   .editor header { margin-bottom:18px; }
 }
+
+.editor #png-export,.editor #png-reload { width:100%; margin-top:10px; }
+.editor #png-export { background:#526f43; color:#fff; }
+.editor #png-download { display:flex; align-items:center; justify-content:center; min-height:44px; padding:10px; border-radius:8px; background:#526f43; color:#fff; text-decoration:none; }
+.editor #png-download[hidden] { display:none; }
+.editor #png-status { font-size:.75rem; overflow-wrap:anywhere; }
+.editor button:disabled { opacity:.55; cursor:default; }

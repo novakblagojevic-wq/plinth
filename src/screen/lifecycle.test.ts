@@ -130,3 +130,22 @@ describe('F5 input transactions', () => {
     expect(note.mock.lastCall?.[0]).toContain('4096');
   });
 });
+it('T-P7 pending decode remains latest-wins across texture recovery',async()=>{
+  type Result=Awaited<ReturnType<typeof loadImage>>;
+  const stage=createStage('phone','soft-studio',.8);const original=bitmap();stage.setImage(original,meta);
+  const pending:Array<(value:Result)=>void>=[];
+  const select=latestImageLoader(()=>new Promise<Result>(resolve=>pending.push(resolve)),result=>stage.setImage(result.bitmap,result.meta),()=>{});
+  const old=select('old'),fresh=select('fresh');stage.restoreImageTexture();expect(original.close).not.toHaveBeenCalled();
+  const latest=bitmap();pending[1]!({bitmap:latest,meta:{...meta,width:81}});await fresh;
+  stage.restoreImageTexture();const texture=physical(stage).emissiveMap;
+  const stale=bitmap();pending[0]!({bitmap:stale,meta});await old;
+  expect(stage.getImage()?.width).toBe(81);expect(physical(stage).emissiveMap).toBe(texture);expect(stale.close).toHaveBeenCalledTimes(1);expect(latest.close).not.toHaveBeenCalled();expect(original.close).toHaveBeenCalledTimes(1);
+  stage.dispose();expect(latest.close).toHaveBeenCalledTimes(1);
+});
+it('T-P7 retires old context image handles once, retaining CPU data for restore',()=>{
+  const stage=createStage('phone','soft-studio',.8),image=bitmap();stage.setImage(image,meta);
+  const old=physical(stage).emissiveMap!,dispose=vi.fn();old.addEventListener('dispose',dispose);
+  stage.releaseGpuResources();stage.releaseGpuResources();expect(dispose).toHaveBeenCalledTimes(1);expect(image.close).not.toHaveBeenCalled();
+  stage.restoreImageTexture();expect(physical(stage).emissiveMap).not.toBe(old);expect(dispose).toHaveBeenCalledTimes(1);expect(image.close).not.toHaveBeenCalled();
+  stage.dispose();expect(image.close).toHaveBeenCalledTimes(1);
+});

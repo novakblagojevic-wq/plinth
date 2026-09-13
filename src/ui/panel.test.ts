@@ -11,7 +11,7 @@ it('validates typed UI steps without changing the broader Stage numeric domain',
 it('explains dependent geometry constraints using the visible control names',()=>{
   const spec={w:.1,h:.2,depth:.01,cornerRadius:.009,bezel:.002,screenInset:.001,frameMetalness:.5,frameRoughness:.5,glassClearcoat:.5,standType:'none' as const,hingeAngle:1.85};
   expect(deviceEditError(spec)).toBeUndefined();
-  expect(deviceEditError({...spec,screenInset:.003})).toBe('Udubljenje ekrana mora biti manje od okvira ekrana.');
-  expect(deviceEditError({...spec,bezel:.01})).toBe('Okvir ekrana mora biti manji od zaobljenja.');
-  expect(deviceEditError({...spec,w:.01})).toBe('Zaobljenje ne sme biti veće od polovine širine ili visine.');
+  expect(deviceEditError({...spec,screenInset:.003})).toBe('Screen inset must be smaller than the bezel.');
+  expect(deviceEditError({...spec,bezel:.01})).toBe('Screen bezel must be smaller than the corner radius.');
+  expect(deviceEditError({...spec,w:.01})).toBe('Corner radius must not exceed half the width or height.');
 });
