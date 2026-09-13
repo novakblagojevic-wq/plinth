@@ -8,6 +8,7 @@ import {
   type WebGLRenderer,
 } from 'three';
 import { EffectComposer } from 'three/addons/postprocessing/EffectComposer.js';
+import type { Pass } from 'three/addons/postprocessing/Pass.js';
 import { RenderPass } from 'three/addons/postprocessing/RenderPass.js';
 import { ShaderPass } from 'three/addons/postprocessing/ShaderPass.js';
 import { SMAAPass } from 'three/addons/postprocessing/SMAAPass.js';
@@ -79,41 +80,71 @@ export function createPipeline(
     stencilBuffer: false,
   });
   flag(target);
-  const composer = new EffectComposer(renderer, target);
-  flag(composer.renderTarget1);
-  flag(composer.renderTarget2);
+  let composer: EffectComposer | undefined;
+  const ownedPasses: Pass[] = [];
+  const textures: Texture[] = [];
+  let disposed = false;
 
-  composer.addPass(new RenderPass(scene, camera));
-
-  let ready: Promise<void> = Promise.resolve();
-  if (opts.msaa) {
-    const copy = new ShaderPass(CopyShader);
-    copy.material.toneMapped = false;
-    composer.addPass(copy);
-  } else {
-    const smaa = new SMAAPass();
-    composer.addPass(smaa);
-    // SMAAPass loads its two lookup textures from data URIs through HTMLImageElement,
-    // asynchronously; a frame rendered before both decode samples empty textures.
-    const lookups = smaa as unknown as { _areaTexture: Texture; _searchTexture: Texture };
-    const textures = [lookups._areaTexture, lookups._searchTexture];
-    ready = Promise.all(textures.map((t) => (t.image as HTMLImageElement).decode())).then(() => {
-      for (const t of textures) t.needsUpdate = true;
-    });
+  // EffectComposer owns its targets/internal copy pass, not the passes we add.
+  function dispose(): void {
+    if (disposed) return;
+    disposed = true;
+    for (const t of textures) (t.image as HTMLImageElement).onload = null;
+    for (const pass of ownedPasses) pass.dispose();
+    if (composer) composer.dispose();
+    else target.dispose();
   }
 
-  return {
-    composer,
-    ready,
-    setSize(width, height, pixelRatio) {
-      composer.setPixelRatio(pixelRatio);
-      composer.setSize(width, height);
-    },
-    render() {
-      composer.render();
-    },
-    dispose() {
-      composer.dispose();
-    },
-  };
+  function addPass(pass: Pass): void {
+    ownedPasses.push(pass);
+    composer!.addPass(pass);
+  }
+
+  try {
+    composer = new EffectComposer(renderer, target);
+    flag(composer.renderTarget1);
+    flag(composer.renderTarget2);
+    addPass(new RenderPass(scene, camera));
+
+    let ready: Promise<void> = Promise.resolve();
+    if (opts.msaa) {
+      const copy = new ShaderPass(CopyShader);
+      copy.material.toneMapped = false;
+      addPass(copy);
+    } else {
+      const smaa = new SMAAPass();
+      // Capture image handlers before attachment, which can itself throw.
+      const lookups = smaa as unknown as { _areaTexture: Texture; _searchTexture: Texture };
+      textures.push(lookups._areaTexture, lookups._searchTexture);
+      addPass(smaa);
+      // Start each decode through a promise so a synchronous throw cannot leave
+      // an earlier decode rejection unobserved.
+      ready = Promise.all(textures.map((t) =>
+        Promise.resolve().then(() => (t.image as HTMLImageElement).decode()),
+      )).then(() => {
+        if (!disposed) for (const t of textures) t.needsUpdate = true;
+      }).catch((error: unknown) => {
+        dispose();
+        throw error;
+      });
+    }
+
+    const activeComposer = composer;
+    return {
+      composer: activeComposer,
+      ready,
+      setSize(width, height, pixelRatio) {
+        if (disposed) return;
+        activeComposer.setPixelRatio(pixelRatio);
+        activeComposer.setSize(width, height);
+      },
+      render() {
+        if (!disposed) activeComposer.render();
+      },
+      dispose,
+    };
+  } catch (error) {
+    dispose();
+    throw error;
+  }
 }
