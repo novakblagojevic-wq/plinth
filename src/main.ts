@@ -227,6 +227,11 @@ async function boot(): Promise<void> {
   });
   cleanup.push(() => recovery.dispose());
   if (ui) { panel = createPanel(document.querySelector<HTMLElement>('#panel')!, store, resize, exporter, pg ? undefined : () => { void sharing?.copy(); }); cleanup.push(() => panel!.dispose()); }
+  if (ui) {
+    const workspaceObserver = new ResizeObserver(() => resize());
+    workspaceObserver.observe(document.querySelector('#workspace')!);
+    cleanup.push(() => workspaceObserver.disconnect());
+  }
   revealNotice = () => { if (ui && matchMedia('(max-width: 899px)').matches) panel?.setOpen(true); };
   cleanup.push(() => { revealNotice = () => {}; });
   const composition = params.get('composition');

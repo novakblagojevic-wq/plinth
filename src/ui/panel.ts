@@ -124,6 +124,10 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   numeric(fit, 'pad', 'Image padding', 0, 25, 1, s => s.pad * 100, value => store.apply({ pad: value / 100 }));
   colour(fit, 'padColor', 'Padding color', s => s.padColor, value => store.apply({ padColor: value }));
   const png = exporter ? section('Save image') : undefined;
+  if (png) {
+    png.id = 'png-actions'; png.setAttribute('aria-label', 'Save image');
+    root.insertAdjacentElement('afterend', png);
+  }
   let refreshExport = (): void => {};
   let recovery: RecoveryState = 'ready';
   let exportUnsubscribe = (): void => {};
@@ -218,6 +222,6 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
       for (const element of root.children) if (element instanceof HTMLElement && element !== png && element.tagName !== 'HEADER') element.inert = value !== 'ready';
       refreshExport();
     },
-    dispose() { exportUnsubscribe(); unsubscribe(); abort.abort(); }
+    dispose() { exportUnsubscribe(); unsubscribe(); abort.abort(); png?.remove(); }
   };
 }
