@@ -1,7 +1,8 @@
 # T-P9 core — shared scene links, shortcuts and mobile usability
 
-Status: **owner-approved P-14 contract; planning candidate awaiting independent
-review and merge. Not permission to implement on an unmerged planning branch.**
+Status: **implementation candidate on `astra/t-p9-build`, after independently
+reviewed planning PR #20 merged as `2f8b3f519911b3301412fb047939fed8126a3139`.
+Owner authorized implementation with “Moze”. Awaiting implementation review.**
 Author: Codex planning session (exact backend identifier not exposed).
 Base inspected: `ade7c25e6e7e84ee1ffe653a8495a7ed9efcdedd`, T-P7 PR #19 merged.
 Document of record: PLINTH_SPEC §2–§3, §4.1–§4.6, §4.8–§4.9, §6–§7;
@@ -256,3 +257,98 @@ asset changes; no altered output dimensions, tone/alpha/SMAA or geometry presets
 no video/motion/hash-image inclusion, accounts/backend/network/storage, framework
 migration or competitor branding. A normative gap becomes TODO(spec) with finding
 number and a stop in the affected scope; never change the spec inside build work.
+
+
+## Implementation evidence
+
+Implementer: Codex (backend model identifier not exposed), Linux / Node 24.19.0,
+pinned Chromium 153.0.8010.12 headless shell / Playwright 1.63.0 / SwiftShader.
+Base: `2f8b3f519911b3301412fb047939fed8126a3139`, fetched before editing;
+planning branch is merged, no intervening application diff. GitHub scoped branch
+creation succeeded. `npm ci` passed in the new build worktree. Base `npm run ci`:
+66 guards (406.11s), typecheck, 161 unit tests (7.57s); build passed (381ms).
+
+F1: merged base used; historical handoff statements are not treated as current.
+F2/F6/F11: explicit v1 DTO, bounded decoder and independent literal fixtures in
+`src/state/codec.ts` and its tests. No Three allocation in the wire validator.
+F3: Stage transition metadata plus `snapshotState` select the actual displayed view.
+F4: `SettingsStore.hydrate` validates first, applies immediately without PG MSAA
+forcing, and reports GPU failure through the editor failure/reload path. Startup
+also renders/checks GL before reporting a successful import. Image loader unchanged.
+F5: shared pngScale, exact composition derivation, explicit image-free projection.
+F7/F8: `createNavigation` owns coalescing/events/recovery; `createShare` owns click
+snapshots and async clipboard generations. Manual fallback remains selectable.
+F9/F10: `attachShortcuts` ignores editing/modifier/composition input; panel tracks
+focus across breakpoints and keeps focused controls visible after viewport resize.
+F12: new unit/browser guards, literal fixtures and seeded failures below; existing
+guards are unchanged. PG script adds four named share/help views, preserving all
+56 previous cases and 20 automatic comparisons. Fixtures remain untouched.
+
+Seeded browser negatives (response rewriting only, no committed mutation):
+- validation: removing numeric upper bounds fails the decoder rejection assertion
+  (`false` vs `true`), 7.50s.
+- target: serializing the selected target fails displayed-custom-view equality,
+  7.39s.
+- privacy: adding image sentinel data fails the decoded-link privacy assertion,
+  7.14s.
+- shortcut: removing editable-target exclusion changes phone to tablet while
+  typing and fails the device assertion, 9.08s.
+All four failed assertions after browser startup, not imports/launches.
+
+Local final and exact published head/tree plus CI/PG/PNG results are recorded in
+the implementation PR. A response-rewritten export-boundary probe verifies scale
+1/2/3 delegation; a separate real download is independently PNG-decoded at
+1920×640 with transparent alpha after link restoration and Shift+E.
+No new physical Android observation is claimed. Safari remains owner-deferred to
+release, not PASS. No usability participant or Gate-5b result is invented.
+
+### Independent review FIXUP — PR #21
+
+Review of `0e1f7c1` identified two P-14(3–4) integration failures:
+1. Completion of an existing pose transition overwrote a newer rejected hash.
+   Navigation now distinguishes explicit settings edits from animation completion;
+   rejection blocks the latter until an explicit edit or Copy link. Browser
+   regressions cover malformed and future-version links during the real R action,
+   settling the transition, and subsequent explicit edit/copy recovery.
+2. Clipboard status replaced the History API failure message. Address status now
+   has a separate live region, retained through successful and denied clipboard
+   operations and cleared after a successful address write. Integrated browser
+   assertions cover both clipboard outcomes without changing the existing
+   manual-copy assertions.
+
+No spec, fixture, dependency or workflow changes. Fresh review of the corrected
+published head remains required; the original review is FIXUP, not approval.
+
+### Second independent FIXUP — delayed clipboard lifecycle
+
+Review of `364a642` confirmed the two earlier fixes but found that animation-only
+completion still invalidated an unresolved Copy link result. CI also failed its
+existing interrupted-copy test (75/76 guards); that timeout is compatible with
+this race, but its exact causal chain was not logged. PG and PNG passed.
+
+Navigation now updates the settled address without invalidating the pending copy
+on animation-only events. Explicit editing and navigation still invalidate stale
+clipboard results; sharing disposal remains unchanged. Two deterministic browser
+cases use the real R shortcut, deferred clipboard promises and browser animation
+frames to check success and denial after the transition completes. Both fail on
+unmodified `364a642` application code with the observed "Copying link…" status
+(20.59s combined), before the production correction. The existing interrupted
+snapshot/privacy test and all previous guard assertions are retained.
+
+### Third independent FIXUP — browser clock ownership
+
+Review of `fc87a07` verified the production clipboard fix, but cloud CI failed
+before the new success scenario: pauseAt received a runner-derived timestamp
+already behind the page clock (77/78 guards). PG and PNG completed successfully.
+Both affected tests now install a fixed epoch before boot and pause at the next
+day after the bounded 60-second readiness check. They never compare runner and
+browser clocks. The paused page time is asserted explicitly. Existing animation,
+clipboard outcome, rejection-barrier and manual URL assertions are retained.
+An optional response-rewritten seed restores the previous unconditional copy
+invalidation so both clipboard regressions can be checked against old behavior
+with the corrected clock setup. Production application files are unchanged.
+Targeted positives: 3/3 PASS (35.69s). With PLINTH_COPY_SEED=1 restoring only
+old unconditional invalidation in the served response, both delayed clipboard
+cases fail at their outcome assertions after successful clock/animation setup
+(7.732s success case, 10.456s denial case; 21.57s run). No source mutation or
+assertion weakening; full unseeded acceptance is run after this negative probe.

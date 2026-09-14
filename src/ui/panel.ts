@@ -1,3 +1,4 @@
+import type { ShareMessage } from '../state/share';
 import { DEVICE_IDS } from '../devices/presets';
 import { invariantViolations, type DeviceSpec } from '../devices/spec';
 import { POSE_IDS } from '../camera/poses';
@@ -37,7 +38,7 @@ export function deviceEditError(spec: DeviceSpec): string | undefined {
   const violation = invariantViolations(spec)[0];
   return violation ? messages[violation] ?? 'Check the device dimensions.' : undefined;
 }
-export function createPanel(root: HTMLElement, store: SettingsStore, layoutChanged: () => void, exporter?: DownloadController) {
+export function createPanel(root: HTMLElement, store: SettingsStore, layoutChanged: () => void, exporter?: DownloadController, share?: () => void) {
   const abort = new AbortController(); const signal = abort.signal;
   const refreshers: ((state: Settings) => void)[] = [];
   root.innerHTML = '<header><div><span class="eyebrow">PLINTH</span><h1>A studio for your screenshot</h1></div><button type="button" id="sheet-close" aria-label="Close settings">×</button></header>';
@@ -135,7 +136,8 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
     const link = document.createElement('a'); link.id = 'png-download'; link.textContent = 'Download PNG'; link.hidden = true;
     const reload = document.createElement('button'); reload.id = 'png-reload'; reload.type = 'button'; reload.textContent = 'Reload page'; reload.hidden = true;
     reload.addEventListener('click', () => window.location.reload(), { signal });
-    button.addEventListener('click', () => { void exporter.run(Number(scale.value) as ExportScale).catch(() => {}); }, { signal });
+    scale.addEventListener('change', () => attempt(scale, () => store.apply({pngScale:Number(scale.value) as ExportScale})), {signal});
+    button.addEventListener('click', () => { if (recovery === 'ready') void exporter.run(store.get().pngScale).catch(() => {}); }, { signal });
     link.addEventListener('click', () => { status.textContent = 'Download started. Check your downloads.'; }, { signal });
     png.append(scale, button, status, link, reload);
     function display(value: DownloadState): void {
@@ -150,8 +152,30 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
     }
     refreshExport = () => display(exporter.get());
     exportUnsubscribe = exporter.subscribe(display);
-    refreshers.push(state => { for (const option of scale.options) { const n = Number(option.value) as ExportScale; const d = outputDimensions(state.aspect, n); option.textContent = `${n}× · ${d.width} × ${d.height}`; } });
+    refreshers.push(state => { scale.value = String(state.pngScale); for (const option of scale.options) { const n = Number(option.value) as ExportScale; const d = outputDimensions(state.aspect, n); option.textContent = `${n}× · ${d.width} × ${d.height}`; } });
     refreshExport();
+  }
+  let showAddressNotice = (_message: string): void => {};
+  let showShare = (_value: ShareMessage): void => {};
+  if (share) {
+    const area = section('Share scene'); area.id = 'share-section';
+    const hint = document.createElement('p'); hint.className = 'hint'; hint.textContent = 'Links include the scene settings, never your image.';
+    const button = document.createElement('button'); button.type = 'button'; button.id = 'copy-link'; button.textContent = 'Copy link';
+    button.addEventListener('click', share, {signal});
+    const status = document.createElement('p'); status.id = 'share-status'; status.setAttribute('role','status');
+    const fallback = document.createElement('input'); fallback.id = 'share-url'; fallback.readOnly = true; fallback.hidden = true; fallback.setAttribute('aria-label','Scene link to copy manually');
+    fallback.addEventListener('focus', () => fallback.select(), {signal});
+    fallback.addEventListener('click', () => fallback.select(), {signal});
+    const addressStatus = document.createElement('p'); addressStatus.id = 'share-address-status'; addressStatus.setAttribute('role','status'); addressStatus.hidden = true;
+    showAddressNotice = message => { addressStatus.textContent = message; addressStatus.hidden = !message; if (message && matchMedia('(max-width: 899px)').matches && !document.body.classList.contains('sheet-open')) setOpen(true); };
+    area.append(hint,button,status,addressStatus,fallback);
+    showShare = value => { if (value.message && matchMedia('(max-width: 899px)').matches && !document.body.classList.contains('sheet-open')) setOpen(true); status.textContent = value.message; fallback.hidden = !value.url; fallback.value = value.url ?? ''; if (value.url) { setOpen(true); fallback.focus(); fallback.select(); } };
+    const help = section('Keyboard shortcuts');
+    const toggle = document.createElement('button'); toggle.type = 'button'; toggle.id = 'shortcut-help'; toggle.textContent = 'Show keyboard shortcuts'; toggle.setAttribute('aria-expanded','false'); toggle.setAttribute('aria-controls','shortcut-keys');
+    const content = document.createElement('p'); content.id = 'shortcut-keys'; content.hidden = true;
+    content.textContent = '1–5: Phone, Tablet, Laptop, Browser, Card. Q/W/E/R: Front, Three-quarter, Top, Lean. Shift+E: Prepare PNG at the selected size, then choose Download PNG. Shortcuts stay inactive while typing.';
+    toggle.addEventListener('click', () => { content.hidden = !content.hidden; toggle.setAttribute('aria-expanded',String(!content.hidden)); }, {signal});
+    help.append(toggle,content);
   }
   const details = document.createElement('details'); const summary = document.createElement('summary'); summary.textContent = 'Advanced settings'; summary.setAttribute('aria-controls', 'advanced-controls'); summary.setAttribute('aria-expanded', 'false'); details.append(summary); root.append(details);
   const advanced = section('Shape and material', details); advanced.id = 'advanced-controls';
@@ -167,19 +191,28 @@ export function createPanel(root: HTMLElement, store: SettingsStore, layoutChang
   const refresh = (state: Settings, reason?: string): void => {
     // A complete composition replaces pending edits, including through the QA API.
     // Unrelated successful edits leave other invalid controls and their messages intact.
-    if (reason === 'apply' && state.composition !== null) clearError();
+    if (reason === 'compose' || (reason === 'apply' && state.composition !== null)) clearError();
     for (const fn of refreshers) fn(state);
   };
   refresh(store.get()); const unsubscribe = store.subscribe(refresh);
   function setOpen(open: boolean): void {
     document.body.classList.toggle('sheet-open', open); opener.setAttribute('aria-expanded', String(open));
-    layoutChanged(); (open ? close : opener).focus();
+    layoutChanged(); (matchMedia('(max-width: 899px)').matches ? (open ? close : opener) : pick).focus();
   }
   opener.addEventListener('click', () => setOpen(!document.body.classList.contains('sheet-open')), { signal });
   close.addEventListener('click', () => setOpen(false), { signal });
   root.addEventListener('keydown', event => { if (event.key === 'Escape' && matchMedia('(max-width: 899px)').matches) { event.preventDefault(); setOpen(false); } }, { signal });
   root.addEventListener('focusin', event => { (event.target as HTMLElement).scrollIntoView({ block: 'nearest' }); }, { signal });
-  return { setOpen,
+  const media = matchMedia('(max-width: 899px)');
+  let lastFocused: Element | null = document.activeElement;
+  document.addEventListener('focusin', event => { if (event.target instanceof Element && event.target !== document.body) lastFocused = event.target; }, {signal});
+  const adjustFocus = (): void => {
+    const active = document.activeElement === document.body ? lastFocused : document.activeElement;
+    if (!media.matches && (active === close || active === opener)) pick.focus();
+    else if (media.matches && !document.body.classList.contains('sheet-open') && root.contains(active)) opener.focus();
+  };
+  media.addEventListener('change',adjustFocus,{signal});
+  return { setOpen, showShare, showAddressNotice,
     setRecovery(value: RecoveryState) {
       recovery = value;
       for (const element of root.children) if (element instanceof HTMLElement && element !== png && element.tagName !== 'HEADER') element.inert = value !== 'ready';

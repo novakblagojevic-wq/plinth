@@ -8,7 +8,7 @@
 **Live:** https://plinth-phi.vercel.app/
 
 **Status:** pre-alpha, Build Games entry. The interactive studio is available;
-PNG downloads are implemented in T-P7; motion/video and shareable settings are still upcoming.
+PNG downloads and shareable scene settings are implemented; motion/video remain upcoming.
 
 3D mockup studio in the browser. Devices are parametric generic slabs, never a
 replica of any manufacturer's design. Nothing leaves the tab: no network at
@@ -30,23 +30,45 @@ The guards (`guards/`) need a Playwright Chromium: `npx playwright install chrom
 Choose, drop or paste a PNG/JPG/WebP image. The panel provides four composed
 looks, five devices, four camera poses, five output formats and separate
 controls for space around the device and padding inside its screen. Drag the
-visible canvas to adjust the view. On narrow screens, open **Podešavanja**;
+visible canvas to adjust the view. On narrow screens, open **Settings**;
 the sheet reserves space so the stage remains visible above it.
 
 Backgrounds can follow the lighting scene, use a solid colour or vertical
 gradient, or be transparent. The checkerboard only belongs to the editor.
 Advanced controls expose geometry, hinge angle, materials, AgX/ACES and preview
-MSAA. **Vrati početni izgled** restores the Studio composition while keeping
+MSAA. **Reset look** restores the Studio composition while keeping
 your uploaded image. Nothing is uploaded or saved to a server.
 
-In **Sačuvaj sliku**, choose 1×, 2× or 3× with the displayed dimensions,
-then **Izvezi PNG**. When the file is ready, use **Preuzmi PNG**. The file
+In **Save image**, choose 1×, 2× or 3× with the displayed dimensions,
+then **Export PNG**. When the file is ready, use **Download PNG**. The file
 keeps the requested dimensions, colour and transparency; the filename includes
 the device, light, format and scale. The editor checkerboard is not exported.
 If your device cannot support a size, choose a smaller scale explicitly.
 The app never silently substitutes a smaller image. A lost graphics context
 triggers recovery from the image held in this tab; if recovery fails, the page
 offers a reload with a reminder to select the image again.
+
+## Share a scene
+
+**Copy link** shares the current angle and settings, including PNG size, without
+including your image. A recipient starts with the demo and adds their own screenshot.
+The link uses the current site address, so preview links remain preview links.
+If clipboard access is unavailable, select the displayed link and copy it manually.
+Settings edits update the address after a short idle delay; this is not cloud storage
+or undo history. Invalid links preserve the current scene; opening an invalid link
+in a new tab uses the default scene and explains the error.
+
+Keyboard shortcuts work outside text fields and native selects:
+
+| Keys | Action |
+|---|---|
+| 1 / 2 / 3 / 4 / 5 | Phone / Tablet / Laptop / Browser / Card |
+| Q / W / E / R | Front / Three-quarter / Top / Lean |
+| Shift+E | Prepare PNG at the selected size; then choose Download PNG |
+
+The panel includes keyboard help. Version 1 links are validated before use, and
+PG capture ignores sharing and studio shortcuts. Four additional named UI captures
+show sharing/manual-copy and keyboard help on desktop and mobile.
 
 ## Scene presets
 

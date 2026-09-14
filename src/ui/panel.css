@@ -56,3 +56,9 @@ body.pg #note:not(:empty) { width:fit-content; max-width:calc(100% - 48px); padd
 .editor #png-download[hidden] { display:none; }
 .editor #png-status { font-size:.75rem; overflow-wrap:anywhere; }
 .editor button:disabled { opacity:.55; cursor:default; }
+
+.editor #copy-link,.editor #shortcut-help { width:100%; margin-top:10px; }
+.editor #share-status,.editor #shortcut-keys { font-size:.75rem; overflow-wrap:anywhere; }
+.editor #share-url[hidden] { display:none; }
+
+.editor #panel input,.editor #panel button,.editor #panel a,.editor #panel select { scroll-margin-block:8px; }

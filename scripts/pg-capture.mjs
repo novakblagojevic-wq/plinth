@@ -164,6 +164,21 @@ try {
     else annotate('warning',`${evidence.name}: named T-P6 evidence, awaiting visual confirmation`);
     await page.close();
   }
+  // T-P9 adds explicit interactive UI evidence without changing any PG case.
+  for (const mobile of [false,true]) {
+    const page=await browser.newPage({viewport:mobile?{width:400,height:700}:SIZE,deviceScaleFactor:1});
+    await page.addInitScript(()=>Object.defineProperty(navigator,'clipboard',{value:undefined}));
+    await page.goto(url,{waitUntil:'load'});
+    await page.waitForSelector('html[data-plinth-ready="1"]',{timeout:60000});
+    if(mobile)await page.locator('#settings-open').click();
+    await page.locator('#copy-link').click();
+    await page.locator('#share-url').waitFor({state:'visible'});
+    await page.screenshot({path:join(OUT,`share-${mobile?'mobile':'desktop'}.png`)});captured++;
+    await page.locator('#shortcut-help').click();
+    await page.locator('#shortcut-keys').scrollIntoViewIfNeeded();
+    await page.screenshot({path:join(OUT,`help-${mobile?'mobile':'desktop'}.png`)});captured++;
+    await page.close();
+  }
   // A separate T-P6 sheet leaves the legacy 20-cell contact-sheet helper intact.
   // All images below are the actual CI candidates above, not regenerated scenes.
   const sheet=await browser.newPage({viewport:{width:1280,height:900},deviceScaleFactor:1});
