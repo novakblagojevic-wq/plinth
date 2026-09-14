@@ -34,3 +34,44 @@ Non-negotiable, whoever you are:
   Code; elsewhere, treat the list above as law.
 - `npm run ci` (guards → typecheck → unit tests; guards need Playwright
   Chromium) is the acceptance command. Green CI is evidence, not review.
+
+## Owner defaults: environment and evidence (2026-09-14)
+
+These are the owner's reusable defaults for this and future projects. Include
+this section when preparing AGENTS.md for a new repository; a file in this
+repository does not automatically configure unrelated repositories or chats.
+Adapt the implementation to the project and preserve its specific acceptance
+requirements. Do not change a specification or skip a required check to apply
+these defaults.
+
+### Linux first
+
+- Use Linux by default for development, automation, builds, tests and CI.
+- Use macOS only for a concrete requirement that Linux cannot satisfy, such as
+  an Apple-platform build or validation requiring an Apple environment. Record
+  the reason and limit the macOS work to the necessary jobs.
+- Reuse relevant results for the same tested commit; avoid duplicate dispatches
+  and unnecessary expensive runs. Preserve all required gates and their
+  freshness requirements. Linux is a cost preference, not a promise of free CI.
+
+### Reproducible, observable development
+
+- For interactive or visual work, provide repeatable starting scenes or
+  equivalent fixtures, observable application state, useful logs and visual
+  captures. Reuse existing project tools before adding infrastructure.
+- Test meaningful user journeys through real actions. A shortcut that prepares
+  a scene does not replace testing the transition into that scene.
+- When fixing a behavioral defect, use a focused regression that exposes the
+  defect and verifies the correction where practical. Never weaken existing
+  assertions. Do not add tests that merely restate implementation details.
+- Measure performance on comparable scenarios. Record environment, workload,
+  relevant resource/frame metrics and limitations; software-renderer or
+  headless measurements are not target-device GPU benchmarks.
+- Combine automated evidence with human judgment of appearance and controls.
+  Clearly distinguish verified results from deferred checks.
+- Keep rendering, collision and simulation data consistent where they describe
+  the same world. Introduce procedural generation, streaming, LOD and background
+  jobs only when the product needs them and measurements justify their cost.
+- Prefer the selected engine's native capabilities (for example, Unity or
+  Unreal test tooling) over rebuilding browser-specific infrastructure. These
+  principles do not mandate Three.js, a custom renderer or a planetary system.
