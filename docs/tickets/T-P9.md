@@ -334,3 +334,21 @@ frames to check success and denial after the transition completes. Both fail on
 unmodified `364a642` application code with the observed "Copying link…" status
 (20.59s combined), before the production correction. The existing interrupted
 snapshot/privacy test and all previous guard assertions are retained.
+
+### Third independent FIXUP — browser clock ownership
+
+Review of `fc87a07` verified the production clipboard fix, but cloud CI failed
+before the new success scenario: pauseAt received a runner-derived timestamp
+already behind the page clock (77/78 guards). PG and PNG completed successfully.
+Both affected tests now install a fixed epoch before boot and pause at the next
+day after the bounded 60-second readiness check. They never compare runner and
+browser clocks. The paused page time is asserted explicitly. Existing animation,
+clipboard outcome, rejection-barrier and manual URL assertions are retained.
+An optional response-rewritten seed restores the previous unconditional copy
+invalidation so both clipboard regressions can be checked against old behavior
+with the corrected clock setup. Production application files are unchanged.
+Targeted positives: 3/3 PASS (35.69s). With PLINTH_COPY_SEED=1 restoring only
+old unconditional invalidation in the served response, both delayed clipboard
+cases fail at their outcome assertions after successful clock/animation setup
+(7.732s success case, 10.456s denial case; 21.57s run). No source mutation or
+assertion weakening; full unseeded acceptance is run after this negative probe.

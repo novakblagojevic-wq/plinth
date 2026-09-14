@@ -7,7 +7,19 @@ afterAll(async()=>{await browser?.close();await server?.close();});
 const literal=()=>({v:1,device:'laptop',spec:{w:.3,h:.2,depth:.008,cornerRadius:.01,bezel:.004,screenInset:.001,frameMetalness:.7,frameRoughness:.3,glassClearcoat:.8,standType:'hinge',hingeAngle:1.85},view:{pose:'lean'},scene:'warm-sunset',tone:'aces',msaa:true,aspect:'3:1',outputPad:.1,background:{mode:'gradient',solid:'#abcdef',top:'#123456',bottom:'#fedcba'},fit:'cover',pad:.1,padColor:'#123456',pngScale:2});
 const hash=(state:unknown)=>'#s='+Buffer.from(JSON.stringify(state)).toString('base64url');
 async function ready(page:Page, suffix=''){await page.goto(url+suffix);await page.waitForSelector('html[data-plinth-ready="1"]',{timeout:60000});}
-async function seeds(page:Page){const seed=process.env['PLINTH_STATE_SEED'];if(!seed)return;
+async function readyPaused(page:Page){
+ // Let boot finish with a running clock. Both times belong to this fixed test epoch.
+ // The next-day pause is beyond the bounded 60s readiness timeout, independent of runner time.
+ const origin='2026-01-01T00:00:00Z',paused='2026-01-02T00:00:00Z';
+ await page.clock.install({time:origin});await ready(page);await page.clock.pauseAt(paused);
+ expect(await page.evaluate(()=>Date.now())).toBe(Date.parse(paused));
+}
+async function seeds(page:Page){
+ if(process.env['PLINTH_COPY_SEED'])await page.route('**/src/state/navigation.ts',async route=>{
+  const response=await route.fetch();const source=await response.text();const body=source.replace(/if \(explicit\)\s*options\.invalidate\(\);/,'options.invalidate();');
+  expect(body).not.toBe(source);await route.fulfill({response,body});
+ });
+const seed=process.env['PLINTH_STATE_SEED'];if(!seed)return;
  await page.route('**/src/state/codec.ts',async route=>{const response=await route.fetch();const source=await response.text();let body=source;
  if(seed==='validation')body=body.replace('value > max','false');
  if(seed==='target')body=body.replace('state.pose !== null && !transitioning','state.pose !== null');
@@ -72,7 +84,7 @@ it('T-P9 recovery defers latest navigation and PG ignores hash and shortcuts',as
 it('T-P9 rejected navigation survives an older transition until an explicit edit or Copy link',async()=>{
  for(const rejected of ['#s=broken',hash({v:2})]) {
   const page=await browser.newPage();try {
-   await page.clock.install();await ready(page);await page.clock.pauseAt(new Date(Date.now()+1000));
+   await readyPaused(page);
    await page.keyboard.press('r');expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(true);
    await page.evaluate(h=>new Promise<void>(resolve=>{addEventListener('hashchange',()=>resolve(),{once:true});location.hash=h;}),rejected);
    expect(await page.locator('#share-status').innerText()).toMatch(/Invalid|Unsupported/);
@@ -99,11 +111,12 @@ it('T-P9 Copy link retains address failure alongside clipboard success or denial
 });
 it.each([false,true])('T-P9 delayed clipboard survives real animation completion (denied=%s)',async(denied)=>{
   const page=await browser.newPage();try {
+   await seeds(page);
    await page.addInitScript(()=>{
     const state=window as unknown as {finishCopy(denied:boolean):void;copiedUrl:string};
     Object.defineProperty(navigator,'clipboard',{value:{writeText:(text:string)=>new Promise<void>((resolve,reject)=>{state.copiedUrl=text;state.finishCopy=denied=>denied?reject(new Error('denied')):resolve();})}});
    });
-   await page.clock.install();await ready(page);await page.clock.pauseAt(new Date(Date.now()+1000));
+   await readyPaused(page);
    await page.keyboard.press('r');expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(true);
    await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#copy-link')!.click());
    const copied=await page.evaluate(()=>(window as unknown as {copiedUrl:string}).copiedUrl);
