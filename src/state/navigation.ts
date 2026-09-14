@@ -35,7 +35,9 @@ export function createNavigation(options: {
     changed(explicit = true) {
       if (disposed || applying || !options.available() || (rejected && !explicit)) return;
       if (explicit) rejected = false;
-      cancel(); options.invalidate();
+      cancel();
+      // Animation settles the address, but does not supersede a pending copy click.
+      if (explicit) options.invalidate();
       timer = setTimeout(() => {
         timer = undefined;
         if (disposed || !options.available()) return;

@@ -5,7 +5,7 @@ function setup(initial='') {
   const target=Object.assign(new EventTarget(),{location:{hash:initial,pathname:'/',search:'?token=secret'},history:{replaceState:vi.fn((_a:unknown,_b:string,url:string)=>{target.location.hash=url.slice(1);target.location.search='';})}});
   let available=true;const apply=vi.fn(),notice=vi.fn(),invalidate=vi.fn(),snapshot=vi.fn(()=> '#s=current');
   const nav=createNavigation({target:target as unknown as Window,apply,notice,invalidate,snapshot,available:()=>available});
-  return {target,apply,notice,snapshot,nav,availability:(v:boolean)=>{available=v;},navigate:(hash:string)=>{target.location.hash=hash;target.dispatchEvent(new Event('hashchange'));target.dispatchEvent(new Event('popstate'));}};
+  return {target,apply,notice,invalidate,snapshot,nav,availability:(v:boolean)=>{available=v;},navigate:(hash:string)=>{target.location.hash=hash;target.dispatchEvent(new Event('hashchange'));target.dispatchEvent(new Event('popstate'));}};
 }
 it('coalesces edits at 250ms, deduplicates input and cancels stale writes on navigation',()=>{
   vi.useFakeTimers();const x=setup();x.nav.initial();expect(x.apply).not.toHaveBeenCalled();x.nav.changed();vi.advanceTimersByTime(200);x.nav.changed();vi.advanceTimersByTime(249);expect(x.snapshot).not.toHaveBeenCalled();vi.advanceTimersByTime(1);expect(x.target.history.replaceState).toHaveBeenCalledTimes(1);expect(x.apply).not.toHaveBeenCalled();
@@ -24,4 +24,8 @@ it('rejects animation-only synchronization after bad navigation but permits expl
  vi.useFakeTimers();const x=setup();x.nav.changed();x.apply.mockImplementation(()=>{throw new Error('invalid');});x.navigate('#s=bad');x.nav.changed(false);vi.advanceTimersByTime(300);expect(x.target.history.replaceState).not.toHaveBeenCalled();
  x.nav.changed();vi.advanceTimersByTime(250);expect(x.target.location.hash).toBe('#s=current');
  x.navigate('#s=bad');x.nav.copied('#s=copied');expect(x.target.location.hash).toBe('#s=copied');x.nav.dispose();
+});
+it('animation synchronization preserves a pending copy; explicit edits and navigation invalidate it',()=>{
+ vi.useFakeTimers();const x=setup();x.nav.changed(false);vi.advanceTimersByTime(250);expect(x.invalidate).not.toHaveBeenCalled();expect(x.target.location.hash).toBe('#s=current');
+ x.nav.changed();expect(x.invalidate).toHaveBeenCalledTimes(1);x.navigate('#s=incoming');expect(x.invalidate).toHaveBeenCalledTimes(2);x.nav.dispose();
 });

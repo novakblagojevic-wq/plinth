@@ -97,3 +97,20 @@ it('T-P9 Copy link retains address failure alongside clipboard success or denial
   }finally {await page.close();}
  }
 });
+it.each([false,true])('T-P9 delayed clipboard survives real animation completion (denied=%s)',async(denied)=>{
+  const page=await browser.newPage();try {
+   await page.addInitScript(()=>{
+    const state=window as unknown as {finishCopy(denied:boolean):void;copiedUrl:string};
+    Object.defineProperty(navigator,'clipboard',{value:{writeText:(text:string)=>new Promise<void>((resolve,reject)=>{state.copiedUrl=text;state.finishCopy=denied=>denied?reject(new Error('denied')):resolve();})}});
+   });
+   await page.clock.install();await ready(page);await page.clock.pauseAt(new Date(Date.now()+1000));
+   await page.keyboard.press('r');expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(true);
+   await page.evaluate(()=>document.querySelector<HTMLButtonElement>('#copy-link')!.click());
+   const copied=await page.evaluate(()=>(window as unknown as {copiedUrl:string}).copiedUrl);
+   expect(await page.locator('#share-status').innerText()).toBe('Copying link…');
+   await page.clock.runFor(1200);expect(await page.evaluate(()=>window.__plinth.advancePose(0))).toBe(false);
+   await page.evaluate(denied=>(window as unknown as {finishCopy(denied:boolean):void}).finishCopy(denied),denied);
+   expect(await page.locator('#share-status').innerText()).toBe(denied?'Copy this link manually':'Link copied');
+   if(denied){expect(await page.locator('#share-url').inputValue()).toBe(copied);expect(await page.locator('#share-url').isVisible()).toBe(true);}
+  }finally {await page.close();}
+});

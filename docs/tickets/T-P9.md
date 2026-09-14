@@ -318,3 +318,19 @@ Review of `0e1f7c1` identified two P-14(3–4) integration failures:
 
 No spec, fixture, dependency or workflow changes. Fresh review of the corrected
 published head remains required; the original review is FIXUP, not approval.
+
+### Second independent FIXUP — delayed clipboard lifecycle
+
+Review of `364a642` confirmed the two earlier fixes but found that animation-only
+completion still invalidated an unresolved Copy link result. CI also failed its
+existing interrupted-copy test (75/76 guards); that timeout is compatible with
+this race, but its exact causal chain was not logged. PG and PNG passed.
+
+Navigation now updates the settled address without invalidating the pending copy
+on animation-only events. Explicit editing and navigation still invalidate stale
+clipboard results; sharing disposal remains unchanged. Two deterministic browser
+cases use the real R shortcut, deferred clipboard promises and browser animation
+frames to check success and denial after the transition completes. Both fail on
+unmodified `364a642` application code with the observed "Copying link…" status
+(20.59s combined), before the production correction. The existing interrupted
+snapshot/privacy test and all previous guard assertions are retained.
