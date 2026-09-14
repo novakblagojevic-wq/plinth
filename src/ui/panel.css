@@ -62,3 +62,26 @@ body.pg #note:not(:empty) { width:fit-content; max-width:calc(100% - 48px); padd
 .editor #share-url[hidden] { display:none; }
 
 .editor #panel input,.editor #panel button,.editor #panel a,.editor #panel select { scroll-margin-block:8px; }
+
+/* T-P9a: reserve layout space for export independently of scrolling settings. */
+body.editor { grid-template-rows:minmax(0,1fr) auto; }
+.editor #workspace { grid-column:1; grid-row:1 / 3; }
+.editor #panel { grid-column:2; grid-row:1; }
+.editor #png-actions { grid-column:2; grid-row:2; margin:0; padding:12px 20px max(12px,env(safe-area-inset-bottom)); border-left:1px solid var(--line); background:#fafbf8; height:264px; max-height:calc(var(--viewport-height,100dvh) * .45); overflow-y:auto; overscroll-behavior:contain; min-height:0; }
+.editor #png-actions h2 { margin:0 0 6px; }
+.editor #png-actions label { margin:0; }
+.editor #png-status:empty { display:none; }
+.editor #png-actions :is(button,select,a) { scroll-margin-block:8px; }
+@media(max-width:899px) {
+  body.editor { grid-template-rows:minmax(0,1fr) auto auto auto; }
+  .editor #workspace { grid-column:1; grid-row:1; }
+  .editor #panel { grid-column:1; grid-row:2; max-height:min(40dvh,calc(var(--viewport-height,100dvh) * .4)); }
+  .editor #png-actions { grid-column:1; grid-row:3; height:188px; border-left:0; padding:8px 16px; display:grid; grid-template-columns:minmax(0,1fr) minmax(0,1fr); gap:4px 10px; align-content:start; }
+  .editor #png-actions h2 { display:none; }
+  .editor #png-actions label { grid-column:1; }
+  .editor #png-scale { grid-column:1; grid-row:2; min-width:0; }
+  .editor #png-export { grid-column:2; grid-row:1 / 3; margin:0; align-self:end; }
+  .editor #png-actions :is(#png-status,#png-download,#png-reload) { grid-column:1 / -1; margin:4px 0; }
+  .editor #settings-open { grid-column:1; grid-row:4; background:#fff; color:var(--ink); }
+  .editor.sheet-open #png-actions { padding-bottom:max(8px,env(safe-area-inset-bottom)); }
+}
