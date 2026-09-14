@@ -40,3 +40,13 @@ Inspected sources are the merged main above. Prior PR #24 has the identical appl
 These establish existing behavior, not a pass for future visual changes. No physical-device benchmark or user study is claimed.
 
 TODO(spec)/owner input: F3 blocks replacing the normative owner demo with an agent-authored asset. Keep P-9 unchanged and obtain the owner's portrait image, or approve a concrete alternative first-composition decision before its ticket. Existing-control visual trials and read-only research do not require an asset exception.
+
+## Odluka vlasnika i dopuna istraživanja
+
+Vlasnik je tražio sličnu uspravnu tabelu, zatim odobrio generisanu sliku porukom „Moze, koristi tu“. Time je izričito odobrio ovu konkretnu zamenu demo sadržaja; raniji F3 više ne blokira rad. Slika je 845×1862 PNG, sa engleskim interfejsom. Ne pripisujemo joj ranije poreklo originalnog demo fajla.
+
+Ovaj mali korak menja samo demo i četiri postojeća thumbnail prikaza. Ne bira uređaj niti ugao prema slici. Široki uređaji zadržavaju contain i zato će novu uspravnu sliku prikazivati sa bočnim marginama; korisnikov upload i dalje potpuno zamenjuje demo. Dorada geometrije i F9 ostaju zaseban korak.
+
+Postojeći guard guards/pg-mode.test.ts:142 doslovno očekuje stare dimenzije 2880×1800. Potrebno je ažurirati samo očekivane dimenzije odobrenog asset-a na 845×1862. Ista stroga provera prvog kadra, demo identiteta, fit/pad vrednosti, zagrevanja shader-a, dimenzija canvas-a i sadržaja slike ostaje. To je usklađivanje fixture očekivanja sa odobrenim sadržajem, bez uklanjanja ili slabljenja provere. Stari demo mora pasti na novim očekivanim dimenzijama.
+
+Promena slike namerno menja PG piksele. Baseline fajlovi i pragovi ostaju netaknuti; kandidat se objavljuje radi vlasnikove vizuelne potvrde i zasebnog bless-a. Usvajanje slike nije automatski bless svih novih renderovanih referenci.
