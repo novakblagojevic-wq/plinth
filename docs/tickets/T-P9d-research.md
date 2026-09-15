@@ -51,3 +51,18 @@ size/fit, and adapt the mount-order check to setDemoImages. Keep shader warm-up,
 first rendered content, dimensions, readiness and ordering assertions intact.
 This explicitly expands the write set to this guard fixture; no tolerance,
 assertion coverage, test timeout or baseline may be weakened.
+
+## F7 — owner requests uncropped tablet/laptop/card demos
+
+After reviewing PR #28, the owner accepts the polish but reports missing left
+and right image content on tablet, card and laptop. Their openings are narrower
+than the 2880x1800 landscape image; demoFit's Cover setting necessarily crops
+the horizontal extent. Use Contain for those three demo devices, retaining the
+complete image and its aspect ratio with small top/bottom margins. Phone keeps
+Contain and browser keeps Cover. Do not resize devices, stretch the image,
+alter the source asset, or override an explicit user/shared-link Fit choice.
+Update exact default-Fit fixtures without removing their actions/assertions;
+verify the fitted image lies within each real screen rectangle, preserve both
+explicit shared Fit values, and inspect actual exports. Refresh composition
+thumbnails and the existing capture script's Fit assertion. This supersedes
+F2's Cover choice only for the three devices named in the new owner feedback.
