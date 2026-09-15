@@ -39,3 +39,15 @@ src/screen/demo.ts and tests; existing screen lifecycle/material tests;
 additive guards/demo-edges.test.ts; public/demo-landscape.png;
 public/compositions/*.png; scripts/demo-edges-capture.mjs; this research/ticket.
 No spec, fixtures, old guard assertions, dependency or workflow edits.
+
+## F6 — first-frame guard fixture migration (full-CI finding)
+
+The existing guards/pg-mode.test.ts first-ready probe still expects the portrait
+845x1862/contain demo on a tablet and searches src/main.ts for the former
+single-image mount call. That expectation conflicts with the owner's explicit
+wide-device demo request (F1/F2), rather than a broken first-frame render.
+Extend the same probe to phone AND tablet, assert each exact committed image
+size/fit, and adapt the mount-order check to setDemoImages. Keep shader warm-up,
+first rendered content, dimensions, readiness and ordering assertions intact.
+This explicitly expands the write set to this guard fixture; no tolerance,
+assertion coverage, test timeout or baseline may be weakened.
