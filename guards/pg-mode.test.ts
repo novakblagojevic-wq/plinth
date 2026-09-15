@@ -139,7 +139,7 @@ it('T-P3: the first ready transition contains the committed demo, after image/SD
       meta: ReturnType<typeof window.__plinth.getImage>; png: string; imageShaderBeforeReady: boolean;
       centre: { x: number; y: number }; size: number[];
     } }).__firstImageFrame);
-    expect(first.meta).toMatchObject({ identity: 'demo', originalWidth: 2880, originalHeight: 1800, fit: 'contain', pad: 0, padColor: '#ffffff' });
+    expect(first.meta).toMatchObject({ identity: 'demo', originalWidth: 845, originalHeight: 1862, fit: 'contain', pad: 0, padColor: '#ffffff' });
     expect(first.size).toEqual([1280, 800]);
     expect(first.imageShaderBeforeReady).toBe(true);
     const png = PNG.sync.read(Buffer.from(first.png.split(',')[1]!, 'base64'));
