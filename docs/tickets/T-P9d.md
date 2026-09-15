@@ -1,7 +1,8 @@
 # T-P9d — appropriate demos and continuous screen edges
 
 Document of record: PLINTH_SPEC §2, §4.1/P-9, §4.4/P-6/P-7,
-§4.6/P-13, §4.8/P-14, §7. Research: T-P9d-research F1–F5. Builder: Codex.
+§4.6/P-13, §4.8/P-14, §7. Research: T-P9d-research F1–F6.
+Builder: Codex (backend model identifier not exposed).
 Owner feedback expands polish beyond T-P9c's original no-screen-shader scope;
 this separate ticket/PR records that boundary, stacked on PR #27.
 
@@ -57,5 +58,18 @@ no bless, merge, deploy or competition submission.
 - Initial full CI exposed the stale tablet-first-frame expectation of the
   portrait demo and former mount API. F6 records its exact fixture migration,
   with additional phone coverage and all original readiness checks retained.
-- Full local CI/build, cloud CI/PG/PNG and independent review are pending.
-  Owner did not bless the prior candidate set; fixtures remain unchanged.
+- Expanded first-frame probe: both positive cases pass (34.64 s); a seeded
+  portrait-on-tablet defect fails on 845x1862 versus 2880x1800 (45.70 s).
+  The initial full CI was interrupted after finding the stale fixture; it is
+  not counted as a pass. The complete final run below includes all guards.
+- Full local npm run ci PASSED on
+  63e3a5f56cb0f2cd84fa87628130bb3f937aa91a (tree
+  452ff0f1ecf8ffdf8920456fd8af2dd92539ec9b): 85/85 guards in 13 files
+  (1089.19 s), TypeScript, 197/197 units in 28 files (11.61 s). Final build
+  also passes; the existing 700 kB chunk warning remains (705.06 kB output).
+  Linux, Node 24.19.0, Chromium 153.0.8010.12 / SwiftShader. These timings
+  are acceptance execution time, not a target-device performance benchmark.
+  Only this ticket changes after that tested commit. Runtime,
+  public assets and capture script remain identical to the captured 02ebd48.
+- Cloud CI/PG/PNG and independent review remain pending. Owner did not bless
+  the prior candidate set; fixtures remain unchanged. No merge or deployment.
