@@ -210,3 +210,26 @@ implementacije; novi capture mora čitati stvarni kod bez tih zamena.
   dimenziju, ne slabiji prag ili preskakanje validacije. Provera sa starim
   phone presetom mora pasti, sa novim proći. Literalni codec fixture .072
   ostaje nepromenjen: stari deljeni spec mora i dalje biti čitljiv.
+
+## F18 — PR #27 independent review follow-up (2026-09-15)
+
+The review on fbbec4e identifies an evidence gap in build.test.ts: interpolated
+frame normals and bounds do not prove unchanged position/UV/topology, and do
+not cover the laptop base. The runtime slabGeometry already exposes a natural
+test observation boundary: ExtrudeGeometry.translate completes its original
+metre-space geometry immediately before the mm smoothing round trip.
+
+Add a test-only spy at that boundary, preserving the real translate call and
+cloning its output. Compare the actual final frame for each identical input
+DeviceSpec (and laptop base) against that snapshot: ordered position values,
+vertex counts, index buffer, groups and exact UV data. Permit only 1e-7 metre
+absolute position roundoff (0.1 micrometre; Float32 precision for sub-metre
+geometry), not a shape-dependent fitting tolerance. Check every normal for
+finite unit length and within-triangle variation on both frame and base.
+Restore the spy and dispose snapshots even on failure. No production hook,
+geometry replacement, new dependency, or fixture change is needed.
+
+Prove the focused test fails on independently seeded position, UV, triangle
+order and laptop-base-normal defects in an isolated source copy. Existing
+checks remain. The separate review finding about owner CI-baseline bless
+remains open; these tests cannot resolve or substitute for that decision.
