@@ -22,9 +22,11 @@ this separate ticket/PR records that boundary, stacked on PR #27.
 
 ## Acceptance / write set
 
-Use F1–F5's write set. Add lifecycle/demo-choice tests and a focused real-browser
+Use F1–F6's write set. Add lifecycle/demo-choice tests and a focused real-browser
 regression for image switching, upload preservation, neutral clean-white,
-matching workspace gutters and non-hashed edge shader. Seed relevant regressions.
+matching workspace gutters and non-hashed edge shader. Extend the existing
+first-ready guard to both phone and tablet with their exact source dimensions
+and fit, keeping every warm-up/content/order assertion (F6). Seed regressions.
 Run npm run ci and build before push; preserve old tests. Actual native PNGs,
 new CI PG/PNG and independent review remain required. Baselines remain read-only;
 no bless, merge, deploy or competition submission.
@@ -42,7 +44,7 @@ no bless, merge, deploy or competition submission.
 - Three focused browser guards pass (41.22 s). Separate seeded runs fail on:
   restored alphaHash (12 dark/light alternations along the sampled edge), wrong
   portrait selection on tablet (845 instead of 2880), old green-grey gutters
-  ([233,236,229] instead of [233,235,238]). No old guard assertion changed.
+  ([233,236,229] instead of [233,235,238]). No old guard assertion is weakened.
   The edge probe allows at most two continuous-rim crossings, accounting for
   the normative front camera's 5-degree elevation and perspective slope.
 - Final real UI capture: 20 device/scene pairs, desktop/mobile screenshots,
@@ -52,5 +54,8 @@ no bless, merge, deploy or competition submission.
   diagnostic red difference overlays. Scene colors were not changed.
 - Four thumbnails regenerated. Workspace side gutters match preset/solid
   backgrounds; canvas outer CSS shadow removed, panel layout preserved.
+- Initial full CI exposed the stale tablet-first-frame expectation of the
+  portrait demo and former mount API. F6 records its exact fixture migration,
+  with additional phone coverage and all original readiness checks retained.
 - Full local CI/build, cloud CI/PG/PNG and independent review are pending.
   Owner did not bless the prior candidate set; fixtures remain unchanged.

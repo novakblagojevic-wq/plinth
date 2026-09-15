@@ -111,7 +111,10 @@ describe('§7 pg mode', () => {
 // T-P3 v2 additions: real inputs, first rendered frame and P-9 limits.
 import { PNG } from 'pngjs';
 
-it('T-P3: the first ready transition contains the committed demo, after image/SDF warm-up', async () => {
+it.each([
+  ['phone', 845, 1862, 'contain'],
+  ['tablet', 2880, 1800, 'cover'],
+] as const)('T-P3/T-P9d: %s first ready transition contains its committed demo, after image/SDF warm-up', async (device, originalWidth, originalHeight, fit) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   try {
     await page.addInitScript(() => {
@@ -133,13 +136,13 @@ it('T-P3: the first ready transition contains the committed demo, after image/SD
       });
       observer.observe(document, { subtree: true, attributes: true, attributeFilter: ['data-plinth-ready'] });
     });
-    await page.goto(`${url}?pg=1&msaa=1&device=tablet`);
+    await page.goto(`${url}?pg=1&msaa=1&device=${device}`);
     await page.waitForSelector('html[data-plinth-ready="1"]', { timeout: 60_000 });
     const first = await page.evaluate(() => (window as unknown as { __firstImageFrame: {
       meta: ReturnType<typeof window.__plinth.getImage>; png: string; imageShaderBeforeReady: boolean;
       centre: { x: number; y: number }; size: number[];
     } }).__firstImageFrame);
-    expect(first.meta).toMatchObject({ identity: 'demo', originalWidth: 845, originalHeight: 1862, fit: 'contain', pad: 0, padColor: '#ffffff' });
+    expect(first.meta).toMatchObject({ identity: 'demo', originalWidth, originalHeight, fit, pad: 0, padColor: '#ffffff' });
     expect(first.size).toEqual([1280, 800]);
     expect(first.imageShaderBeforeReady).toBe(true);
     const png = PNG.sync.read(Buffer.from(first.png.split(',')[1]!, 'base64'));
@@ -154,7 +157,7 @@ it('T-P3: the first ready transition contains the committed demo, after image/SD
     // placeholder or a canvas cleared before observation has just one colour.
     expect(colours.size, 'image content in the first rendered canvas').toBeGreaterThan(1);
     const entry = readFileSync(join(ROOT, 'src/main.ts'), 'utf8');
-    const mounting = entry.indexOf('stage.setImage(demo.bitmap');
+    const mounting = entry.indexOf('stage.setDemoImages(demos)');
     const studio = entry.indexOf('const studio = createStudio(');
     expect(mounting).toBeGreaterThan(-1);
     expect(studio).toBeGreaterThan(mounting);
