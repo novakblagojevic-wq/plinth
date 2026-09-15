@@ -204,9 +204,9 @@ ni budući PNG domen veličine. Potpun usvojeni tekst ide samo u spec-only commi
 
 ### F15 — Tačne PNG dimenzije nisu dokaz celog uspravnog kadra
 
-[Linux run 34696153078, pokušaj 2](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/attempts/2)
+[Linux run 34696153078, pokušaj 2](https://github.com/thohared/astra-runner/actions/runs/34696153078/attempts/2)
 proizveo je 45 PNG fajlova sa potvrđenim hash-evima i dimenzijama. Pregled
-[PG artefakta](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/artifacts/10299725819)
+[PG artefakta](https://github.com/thohared/astra-runner/actions/runs/34696153078/artifacts/10299725819)
 otkrio je da `aspect-tablet-4x5.png` ima 200 odsečenih redova (800–999), a
 `aspect-laptop-9x16.png` 480 (800–1279). Svi ti redovi su `#14161a`, boja tela
 stranice. `scripts/pg-capture.mjs:101` i novi PG test koriste viewport 1280×800,
@@ -225,7 +225,7 @@ nedostatak dokaza, ne nova spec odluka ili dozvola da se baseline potvrdi.
 
 ### F16 — Spoljašnji CI limit nema prostor za nove obavezne testove
 
-[Isti run, CI artefakt](https://github.com/novakblagojevic-wq/astra-runner/actions/runs/34696153078/artifacts/10299596633)
+[Isti run, CI artefakt](https://github.com/thohared/astra-runner/actions/runs/34696153078/artifacts/10299596633)
 potvrđuje da osnova prolazi `npm run ci` za 879,126 s: 40 guardova, typecheck,
 65 unit testova. Kandidat je prekinut na 900,018 s tokom guard faze. Tri nova
 T-P5 browser slučaja su prošla i trajala ukupno 118,249 s; na osnovi je do
