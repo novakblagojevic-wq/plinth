@@ -1,3 +1,4 @@
+import { demoFit } from './screen/demo';
 import { Quaternion, Vector3 } from 'three';
 import { decodeV1, type SharedState } from './state/codec';
 import { clonePoseSnapshot, type PoseSelection, type PoseSnapshot } from './camera/poses';
@@ -37,6 +38,7 @@ export function createSettingsStore(stage: Stage, studio: Studio, options: { imm
     msaa: options.msaa, background: defaultBackground(), composition: null, pngScale: 1 };
   const identify = (): CompositionId | null => stage.isTransitioning() ? null : COMPOSITIONS.find(row => {
     const expected = compositionSettings(row.id);
+    if (stage.getImage()?.identity === 'demo') Object.assign(expected, { fit: demoFit(row.device) });
     return Object.entries(expected).every(([key,value]) => {
       if (key === 'composition') return true;
       const actual = state[key as keyof Settings];
@@ -86,9 +88,9 @@ export function createSettingsStore(stage: Stage, studio: Studio, options: { imm
       catch (error) { options.onHydrationFailure?.(error); throw error; }
       finally { hydrating = false; }
     },
-    compose(id) { api.apply(compositionSettings(id), id); },
+    compose(id) { const next = compositionSettings(id); api.apply({ ...next, ...(stage.getImage()?.identity === 'demo' ? { fit: demoFit(next.device) } : {}) }, id); },
     reset() { const prior = hydrating; hydrating = true; try { api.apply({...compositionSettings('studio-phone'),pngScale:1},'studio-phone'); } finally { hydrating = prior; } },
-    setDevice(id) { if (id !== state.device) api.apply({ device: id, spec: presetSpec(id) }); },
+    setDevice(id) { if (id !== state.device) api.apply({ device: id, spec: presetSpec(id), ...(stage.getImage()?.identity === 'demo' ? { fit: demoFit(id) } : {}) }); },
     subscribe(listener) { listeners.add(listener); return () => { listeners.delete(listener); }; },
     dispose() { if (disposed) return; disposed = true; unsubscribe(); listeners.clear(); },
   };

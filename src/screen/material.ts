@@ -55,9 +55,10 @@ export function patchScreen(material: MeshPhysicalMaterial) {
     screenPadColor: { value: new Color('#ffffff') },
     screenColourOverride: { value: false },
   };
-  // Keep the opaque P-6 material. Its deterministic coverage test consumes only
-  // the SDF's subfragment edge coverage before the existing SMAA/MSAA path.
-  material.alphaHash = true;
+  // Continuous opaque silhouette: threshold derivative-based SDF coverage,
+  // then let existing SMAA/MSAA smooth the edge without stochastic holes.
+  material.alphaHash = false;
+  material.alphaTest = 0.5;
   material.onBeforeCompile = (shader) => {
     Object.assign(shader.uniforms, uniforms);
     shader.vertexShader = `varying vec2 vScreenUv;\n${shader.vertexShader}`
@@ -66,7 +67,7 @@ export function patchScreen(material: MeshPhysicalMaterial) {
       .replace('#include <alphatest_fragment>', `${mask}\n#include <alphatest_fragment>`)
       .replace('#include <emissivemap_fragment>', sample);
   };
-  material.customProgramCacheKey = () => 't-p3-screen-v2';
+  material.customProgramCacheKey = () => 't-p9d-screen-v3';
   return {
     bind(texture: Texture, imageSize: Size) {
       texture.colorSpace = SRGBColorSpace;
