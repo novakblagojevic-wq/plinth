@@ -191,3 +191,22 @@ tražio istu doradu ostalih uređaja. Izbor proširujemo na celu familiju.
 Posle prekida okruženja, poslednja proba i recept obnovljeni su iz sačuvane
 arhive verzije 2. Istorijske transform skripte pripadaju izvornom stanju pre
 implementacije; novi capture mora čitati stvarni kod bez tih zamena.
+
+- F16 — Vizuelna korekcija F12 posle stvarnog implementacionog grida:
+  crni backplate povećava vidljivost postojećeg SDF/alphaHash šuma uz bele
+  margine tankih browser/card klasa. One zato zadržavaju backing u boji i
+  fizičkim parametrima shell-a; phone/tablet/laptop koriste tamni recess.
+  Izbor je eksplicitan po device ID-u u svim Stage build putevima, ne po
+  upload-u, clearcoat-u ili proizvoljnoj dimenziji. Vlasništvo materijala,
+  rebuild/dispose i praćenje material slider-a proveravaju novi testovi.
+  Ova korekcija unapređuje prikaz i ne menja postojeće testove ili pragove;
+  spec nije promenjen. Globalni SDF anti-aliasing nije deo ovog tiketa.
+
+- F17 — Puna CI provera otkriva da `guards/panel.test.ts:96,98,100`
+  doslovno očekuje stari phone preset .072 / '72' posle invalid unosa i
+  Reset-a. Prihvaćeni novi preset je .07266 / '72.66'. Potrebno je uskladiti
+  samo te tri literalne vrednosti, uz iste akcije, broj/tip tvrdnji i sva
+  aria/error/reset očekivanja. To je ažuriranje test podatka na odobrenu
+  dimenziju, ne slabiji prag ili preskakanje validacije. Provera sa starim
+  phone presetom mora pasti, sa novim proći. Literalni codec fixture .072
+  ostaje nepromenjen: stari deljeni spec mora i dalje biti čitljiv.

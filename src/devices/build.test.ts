@@ -10,6 +10,41 @@ function size(rig: ReturnType<typeof buildDevice>): Vector3 {
 }
 
 describe('§4.2 device builder', () => {
+  it.each(DEVICE_IDS)('T-P9c %s owns its appropriate backing across rebuilds', (id) => {
+    const dark = id !== 'browser' && id !== 'card';
+    const rig = buildDevice(presetSpec(id), id === 'browser', dark);
+    const backing = rig.group.getObjectByName('backplate') as Mesh;
+    const material = backing.material as MeshStandardMaterial;
+    expect(material).not.toBe(rig.frame.material);
+    if (dark) expect(Math.max(material.color.r, material.color.g, material.color.b)).toBeLessThan(0.01);
+    else expect(material.color.equals((rig.frame.material as MeshStandardMaterial).color)).toBe(true);
+    let disposed = 0;
+    material.addEventListener('dispose', () => disposed++);
+    rig.update({ ...rig.spec, w: rig.spec.w + 0.001 });
+    expect((rig.group.getObjectByName('backplate') as Mesh).material).toBe(material);
+    expect(disposed).toBe(0);
+    if (!dark) {
+      rig.update({ ...rig.spec, frameMetalness: 0.22, frameRoughness: 0.44 });
+      expect(material.metalness).toBe(0.22); expect(material.roughness).toBe(0.44);
+    }
+    rig.dispose();
+    expect(disposed).toBe(1);
+  });
+
+  it.each(DEVICE_IDS)('T-P9c %s bevel normals vary within triangles, avoiding flat bands', (id) => {
+    const rig = buildDevice(presetSpec(id), id === 'browser');
+    const normals = rig.frame.geometry.getAttribute('normal');
+    const a = new Vector3(); const b = new Vector3();
+    let interpolated = 0;
+    for (let i = 0; i < normals.count; i += 3) {
+      a.fromBufferAttribute(normals, i); b.fromBufferAttribute(normals, i + 1);
+      expect(a.length()).toBeCloseTo(1, 5);
+      if (a.dot(b) < 0.9999) interpolated++;
+    }
+    expect(interpolated).toBeGreaterThan(10);
+    rig.dispose();
+  });
+
   it.each(DEVICE_IDS)('%s bounding box matches its spec', (id) => {
     const spec = PRESETS[id];
     const rig = buildDevice(spec, id === 'browser');

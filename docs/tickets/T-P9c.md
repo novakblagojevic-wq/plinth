@@ -13,8 +13,9 @@ portrait-demo margins remain explicit: no silent crop or upload replacement.
 ## Scope
 
 1. Implement the accepted phone dimensions/material, dark screen backing,
-   and smooth solid-surface normals. Extend backing and smoothing to every
-   device, including the laptop base. Preserve geometry positions and UVs;
+   and smooth solid-surface normals. Extend smoothing to every device and
+   the laptop base; use F16's dark recess for physical devices and shell
+   backing for flat browser/card classes. Preserve geometry positions and UVs;
    handle the pinned normal utility in millimetres before returning to metres.
 2. Apply F13's device material/depth table. Keep tablet/laptop screen
    proportions and hinge; browser/card retain their thin shapes.
@@ -44,14 +45,36 @@ portrait-demo margins remain explicit: no silent crop or upload replacement.
 src/devices/build.ts, src/devices/presets.ts, src/devices/build.test.ts;
 src/scene.ts, src/scene.test.ts, src/scene/presets.ts, src/scene/studio.ts;
 scripts/polish-capture.mjs; public/compositions/*.png; this ticket/research.
+F17 adds only the three exact phone-default literals in guards/panel.test.ts;
+all existing actions/assertions and independent old-state fixtures stay.
 P-15 is a separate prior planning commit, outside this implementation set.
 
 ## Must not do
 
-No fixture, guard, dependency, workflow, image/demo, URL schema or screen
+No fixture, guard (except F17's exact literal update), dependency, workflow, image/demo, URL schema or screen
 shader edits; no added lights/render targets, replica geometry, runtime
 network or automatic crop. No merge, deployment or submission in this task.
 
 ## Implementation evidence
 
-Pending.
+Linux / Node 24.19.0 / Chromium 153.0.8010.12 (pinned headless shell).
+After environment recovery, the Playwright CDN timed out. The exact official
+Chrome-for-Testing archive was obtained from its Google storage origin and
+verified against the provider's MD5 9a8eb6135b1cda56de8f547776291e35. No pin
+or workflow changed.
+
+- Unit: 188/188 pass, 27 files. Eleven new T-P9c tests fail on old builder/
+  camera source with the new tests retained (11/11 expected failures), then
+  pass on the implementation. No existing assertion changed.
+- Typecheck and build pass; existing chunk warning remains (703.58 kB).
+- Actual UI capture: 20 device/scene pairs, 16:9/DPR1, plus 400×800 fresh
+  mobile and a decoded 1080×1350 PNG downloaded through the real link.
+  No pageerror; screenshots from actual source, no research transforms.
+- Four composition thumbnails regenerated with the existing script.
+- Inspection caught F16's flat-class edge contrast and corrected it before
+  the final captures. Browser/card remain thin and use shell-colored backing;
+  physical device rims are smooth with a dark recess. Portrait demo side
+  margins remain. No screen shader or alpha/color threshold changed.
+- Final full npm run ci is running. The earlier run was deliberately stopped
+  before F16's source correction and is not counted as a pass. Cloud CI/PG/PNG,
+  baseline bless, fresh review and merge remain outstanding.

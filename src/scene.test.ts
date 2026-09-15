@@ -63,6 +63,20 @@ describe('T-P2 stage', () => {
 });
 
 describe('T-P5 world framing and posing', () => {
+  it('T-P9c uses the literal P-15 phone fill and preserves other reference fills', () => {
+    for (const id of DEVICE_IDS) {
+      const stage = createStage(id, 'soft-studio', 1.6);
+      const bounds = geometryWorldBounds(stage.getRig().group);
+      const size = bounds.getSize(new Vector3());
+      const fill = id === 'phone' ? 0.82 : 0.6;
+      const wide = ['tablet', 'browser', 'card'].includes(id);
+      const expected = (Math.max(size.y, size.x / 1.6, size.z / 1.6) / fill / 2 / Math.tan(16 * Math.PI / 180)
+        + Math.max(size.x, size.z) / 2) * Math.tan(16 * Math.PI / 180) / Math.tan((wide ? 12 : 16) * Math.PI / 180);
+      expect(stage.camera.position.distanceTo(bounds.getCenter(new Vector3()))).toBeCloseTo(expected, 7);
+      stage.dispose();
+    }
+  });
+
   const aspects = [1, 4 / 5, 9 / 16, 16 / 9, 3];
   const poses = ['front', 'hero', 'top', 'lean'] as const;
   const cornersOf = (box: Box3): Vector3[] => {
