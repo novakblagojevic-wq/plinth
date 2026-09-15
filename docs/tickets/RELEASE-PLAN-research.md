@@ -209,9 +209,9 @@ only PR exception is not an exemption for T-P5.
   than Plinth.
 - **S5:** [VideoEncoder.isConfigSupported](https://developer.mozilla.org/en-US/docs/Web/API/VideoEncoder/isConfigSupported_static).
 - **S6:** [MediaRecorder.isTypeSupported](https://developer.mozilla.org/en-US/docs/Web/API/MediaRecorder/isTypeSupported_static).
-- **S7:** [PR #7](https://github.com/novakblagojevic-wq/plinth/pull/7),
-  [main CI](https://github.com/novakblagojevic-wq/plinth/actions/runs/34540164995),
-  [main PG capture](https://github.com/novakblagojevic-wq/plinth/actions/runs/34540164887).
+- **S7:** [PR #7](https://github.com/thohared/plinth/pull/7),
+  [main CI](https://github.com/thohared/plinth/actions/runs/34540164995),
+  [main PG capture](https://github.com/thohared/plinth/actions/runs/34540164887).
 
 No source files, guards, fixtures or tests were changed for this research.
 No interactive production-browser test or independent review is claimed.

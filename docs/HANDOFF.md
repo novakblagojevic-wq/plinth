@@ -74,9 +74,9 @@ numbered F1..Fn and cited by number in the ticket and in the PR's
   for tablet/browser/card. Its final head was `9c011b3`; merge is `8aa37c6`.
   The old statement that T-P3 is unbuilt is superseded, not a new task.
 - **Evidence:** main CI
-  [34540164995](https://github.com/novakblagojevic-wq/plinth/actions/runs/34540164995)
+  [34540164995](https://github.com/thohared/plinth/actions/runs/34540164995)
   and PG capture
-  [34540164887](https://github.com/novakblagojevic-wq/plinth/actions/runs/34540164887)
+  [34540164887](https://github.com/thohared/plinth/actions/runs/34540164887)
   succeeded; Vercel reports a successful deployment for the merge commit.
   Novak approved PR #7 after image inspection and explicit disclosure of
   the missing fresh review/standalone bless. That exception is recorded in
@@ -150,7 +150,7 @@ exception counts as this gate. See RELEASE-PLAN for its complete exit.
   snapshot for what is on `main`.
 - The technique vaults are how to build, `portal-standard` is when a build
   is done; primary copies live at `handoff/skills/` in
-  `novakblagojevic-wq/gearfall`. `threejs-technique-vault` Entry 1 C,
+  `thohared/gearfall`. `threejs-technique-vault` Entry 1 C,
   Entry 6 F, Entry 11 B and Entry 12 B/D are what T-P4 leaned on; T-P5
   wants the camera and `damp()` material there.
 - Never weaken a guard, a baseline or a test to get green. Report the

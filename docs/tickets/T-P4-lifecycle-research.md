@@ -1,6 +1,6 @@
 # Render-pipeline resource lifecycle — read-only research
 
-Research date: 2026-09-13. Author: Codex research sub-agent (exact backend identifier unavailable). Baseline: `novakblagojevic-wq/plinth`, main `e98c99e680f2692d4c6e4b2003f1d83d120bc005`. `git fetch origin` succeeded; HEAD and origin/main match. Application source has no difference from HEAD. Read `AGENTS.md`, the complete **committed** `git show HEAD:PLINTH_SPEC.md`, handoff, release plan and ticket/review conventions. The local uncommitted P-13/T-P6 proposal and probe files are excluded as normative sources and left untouched. No implementation, test, fixture, dependency, guard or spec changes were made. This report must be committed under `docs/tickets/` before its implementation ticket is authored (P-5).
+Research date: 2026-09-13. Author: Codex research sub-agent (exact backend identifier unavailable). Baseline: `thohared/plinth`, main `e98c99e680f2692d4c6e4b2003f1d83d120bc005`. `git fetch origin` succeeded; HEAD and origin/main match. Application source has no difference from HEAD. Read `AGENTS.md`, the complete **committed** `git show HEAD:PLINTH_SPEC.md`, handoff, release plan and ticket/review conventions. The local uncommitted P-13/T-P6 proposal and probe files are excluded as normative sources and left untouched. No implementation, test, fixture, dependency, guard or spec changes were made. This report must be committed under `docs/tickets/` before its implementation ticket is authored (P-5).
 
 ## 1. Which cited clauses does the fix touch?
 

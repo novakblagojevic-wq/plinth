@@ -19,7 +19,7 @@ import time
 
 from candidate_profiles import PROFILES, profile_for
 
-REPOSITORY = 'novakblagojevic-wq/plinth'
+REPOSITORY = 'thohared/plinth'
 MAX_RAW = 2 * 1024 * 1024
 MAX_ENCODED = 60000  # one workflow input, below GitHub's total dispatch budget
 FIXED_PATHS = profile_for('T-P3-v2').paths  # legacy T-P3 policy, not a union

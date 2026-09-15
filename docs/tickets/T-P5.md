@@ -290,7 +290,7 @@ vizuelna potvrda/baseline odluka i zasebno merge odobrenje ostaju obavezni.
 
 ## PR #13 touch fixup — 2026-09-12
 
-Fresh-context review [nalaz 1](https://github.com/novakblagojevic-wq/plinth/pull/13#pullrequestreview-5187775594)
+Fresh-context review [nalaz 1](https://github.com/thohared/plinth/pull/13#pullrequestreview-5187775594)
 reprodukovao je native browser takeover: posle prvog touch pomeraja sledi
 pointercancel. Ovo je korekcija P-11(4)/F6 input lifecycle-a u istom write set-u.
 Kontroler pre gesta postavlja canvas touch-action:none, pamti prethodnu inline
