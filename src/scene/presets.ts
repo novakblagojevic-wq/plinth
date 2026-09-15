@@ -7,6 +7,8 @@
  * Colours are linear RGB triples except `background`, which is the sRGB hex
  * the page and `scene.background` show. Angles are degrees.
  */
+import type { DeviceId } from '../devices/presets';
+
 export const SCENE_IDS = ['soft-studio', 'dark-glass', 'warm-sunset', 'clean-white'] as const;
 export type SceneId = (typeof SCENE_IDS)[number];
 
@@ -41,11 +43,11 @@ const WHITE: Rgb = [1, 1, 1];
 export const SCENE_PRESETS: Readonly<Record<SceneId, ScenePreset>> = {
   'soft-studio': {
     background: '#e9ebee',
-    sky: { zenith: WHITE, horizon: [0.85 * 0.847, 0.85 * 0.867, 0.85 * 0.902], ground: [0.45 * 0.604, 0.45 * 0.627, 0.45 * 0.659] },
-    window: { elevation: 45, azimuth: -35, size: [40, 25], colour: WHITE, intensity: 6 },
+    sky: { zenith: [0.8, 0.85, 0.92], horizon: [0.30, 0.33, 0.38], ground: [0.08, 0.09, 0.11] },
+    window: { elevation: 35, azimuth: 140, size: [45, 35], colour: WHITE, intensity: 16 },
     key: { colour: WHITE, intensity: 2.0, position: [0.6, 1.2, 0.8] },
     exposure: 1.0,
-    shadow: { opacity: 0.55, blur: 2.5 },
+    shadow: { opacity: 0.84, blur: 6.0 },
     sigma: 0.03,
   },
   'dark-glass': {
@@ -81,4 +83,17 @@ export const SCENE_PRESETS: Readonly<Record<SceneId, ScenePreset>> = {
 
 export function isSceneId(id: string): id is SceneId {
   return (SCENE_IDS as readonly string[]).includes(id);
+}
+
+/** T-P9c: a broad base needs less spread than an upright phone's contact. */
+const STUDIO_SHADOWS: Readonly<Record<DeviceId, ScenePreset['shadow']>> = {
+  phone: { opacity: 0.84, blur: 6 },
+  tablet: { opacity: 0.82, blur: 5 },
+  laptop: { opacity: 0.72, blur: 4.5 },
+  browser: { opacity: 0.72, blur: 4.5 },
+  card: { opacity: 0.65, blur: 4.5 },
+};
+
+export function contactShadowPreset(scene: SceneId, device: DeviceId): ScenePreset['shadow'] {
+  return scene === 'soft-studio' ? STUDIO_SHADOWS[device] : SCENE_PRESETS[scene].shadow;
 }

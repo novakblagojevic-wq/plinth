@@ -1,5 +1,6 @@
 import {
   Box3,
+  type BufferGeometry,
   CylinderGeometry,
   ExtrudeGeometry,
   Group,
@@ -15,6 +16,7 @@ import {
   Texture,
   Vector3,
 } from 'three';
+import { toCreasedNormals } from 'three/addons/utils/BufferGeometryUtils.js';
 import { screenRect, shapeHash, type DeviceSpec } from './spec';
 import { patchScreen } from '../screen/material';
 import type { FitMode, Size } from '../screen/types';
@@ -143,7 +145,7 @@ interface SlabOpts {
 }
 
 /** Extruded rounded slab spanning x∈[−w/2,w/2], y∈[−h/2,h/2], z∈[0,depth]. */
-function slabGeometry(o: SlabOpts): ExtrudeGeometry {
+function slabGeometry(o: SlabOpts): BufferGeometry {
   const b = Math.min(o.bevel, o.depth / 2 - 1e-6, o.radius);
   const shape = new Shape();
   roundedRect(o.w - 2 * b, o.h - 2 * b, o.radius - b, shape);
@@ -163,8 +165,14 @@ function slabGeometry(o: SlabOpts): ExtrudeGeometry {
     steps: 1,
   });
   g.translate(0, 0, b); // ExtrudeGeometry spans z∈[−b, depth−b]; shift to [0, depth]
-  g.computeVertexNormals();
-  return g;
+  // The pinned utility hashes positions at 0.01 units. Work in millimetres
+  // so neighbouring corners of a metre-scale device are not merged together.
+  // It changes normals only; the outline, triangles and UVs stay unchanged.
+  g.scale(1000, 1000, 1000);
+  const smooth = toCreasedNormals(g, Math.PI / 3);
+  smooth.scale(0.001, 0.001, 0.001);
+  if (smooth !== g) g.dispose();
+  return smooth;
 }
 
 function edgeBevel(spec: DeviceSpec, depth: number): number {
@@ -173,6 +181,7 @@ function edgeBevel(spec: DeviceSpec, depth: number): number {
 
 interface Materials {
   frame: MeshPhysicalMaterial;
+  screenBacking: MeshPhysicalMaterial;
   key: MeshPhysicalMaterial;
   well: MeshPhysicalMaterial;
   screen: MeshPhysicalMaterial;
@@ -197,8 +206,16 @@ export function emissiveCompensation(clearcoat: number): number {
   return 1 / (1 - clearcoat * CLEARCOAT_F0);
 }
 
-function makeMaterials(spec: DeviceSpec): Materials {
+function makeMaterials(spec: DeviceSpec, darkScreenRecess: boolean): Materials {
   return {
+    // Physical screens reveal a dark recess at the SDF edge. Flat classes
+    // match the shell to avoid emphasizing edge stipple against white pads.
+    // This material belongs to the existing backplate, not a glass layer.
+    screenBacking: new MeshPhysicalMaterial({
+      color: darkScreenRecess ? 0x080a0d : 0xd9dde3,
+      metalness: darkScreenRecess ? 0 : spec.frameMetalness,
+      roughness: darkScreenRecess ? 0.85 : spec.frameRoughness,
+    }),
     frame: new MeshPhysicalMaterial({
       color: 0xd9dde3,
       metalness: spec.frameMetalness,
@@ -276,7 +293,7 @@ function buildSlab(
       radius: open.radius + bevel,
       bevel: 0,
     }),
-    mats.frame,
+    mats.screenBacking,
   );
   backplate.name = 'backplate';
   backplate.position.z = BUILDER_RATIOS.gap;
@@ -462,10 +479,10 @@ function buildInto(root: Group, spec: DeviceSpec, mats: Materials, browser: bool
   return { ...parts, bounds };
 }
 
-export function buildDevice(initial: DeviceSpec, browser = false): DeviceRig {
+export function buildDevice(initial: DeviceSpec, browser = false, darkScreenRecess = true): DeviceRig {
   const group = new Group();
   group.name = 'device';
-  const mats = makeMaterials(initial);
+  const mats = makeMaterials(initial, darkScreenRecess);
   let spec = { ...initial };
   let hash = shapeHash(spec);
   let built = buildInto(group, spec, mats, browser);
@@ -491,6 +508,10 @@ export function buildDevice(initial: DeviceSpec, browser = false): DeviceRig {
       spec = { ...next };
       mats.frame.metalness = spec.frameMetalness;
       mats.frame.roughness = spec.frameRoughness;
+      if (!darkScreenRecess) {
+        mats.screenBacking.metalness = spec.frameMetalness;
+        mats.screenBacking.roughness = spec.frameRoughness;
+      }
       mats.screen.clearcoat = spec.glassClearcoat;
       mats.screen.emissiveIntensity = emissiveCompensation(spec.glassClearcoat);
       const h = shapeHash(spec);

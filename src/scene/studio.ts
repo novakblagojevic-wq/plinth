@@ -4,7 +4,7 @@ import type { Stage } from '../scene';
 import { ContactShadow } from './contactShadow';
 import { generateEnvironment, type EnvironmentMap } from './environment';
 import { createPipeline, type Pipeline } from './pipeline';
-import { SCENE_IDS, SCENE_PRESETS, isSceneId, type SceneId } from './presets';
+import { SCENE_IDS, SCENE_PRESETS, contactShadowPreset, isSceneId, type SceneId } from './presets';
 import { defaultBackground, prepareBackground, validateBackground, type BackgroundSettings } from './background';
 
 export type ToneMappingId = 'agx' | 'aces';
@@ -68,7 +68,11 @@ export function createStudio(renderer: WebGLRenderer, stage: Stage, opts: { msaa
     if (!shadow || !shadowDirty) return;
     const viewport = renderer.getViewport(new Vector4()); const scissor = renderer.getScissor(new Vector4());
     const scissorTest = renderer.getScissorTest();
-    try { renderer.setScissorTest(false); shadow.fit(stage.getWorldBounds()); shadow.render(renderer, stage.scene); shadowDirty = false; }
+    try {
+      renderer.setScissorTest(false);
+      shadow.setParams(contactShadowPreset(settings.scene, stage.getDevice()));
+      shadow.fit(stage.getWorldBounds()); shadow.render(renderer, stage.scene); shadowDirty = false;
+    }
     finally { renderer.setViewport(viewport); renderer.setScissor(scissor); renderer.setScissorTest(scissorTest); }
   }
   function render(): void {

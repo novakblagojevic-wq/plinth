@@ -93,11 +93,11 @@ it('T-P6 review: invalid edits remain errors until corrected or replaced by rese
     await height.fill('160');
     expect(await width.inputValue()).toBe('19');expect(await width.getAttribute('aria-invalid')).toBe('true');
     expect(await error.innerText()).toContain('Width');
-    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.072);
+    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.07266);
     await page.locator('#reset').click();
-    expect(await width.inputValue()).toBe('72');expect(await width.getAttribute('aria-invalid')).toBeNull();
+    expect(await width.inputValue()).toBe('72.66');expect(await width.getAttribute('aria-invalid')).toBeNull();
     expect(await width.getAttribute('aria-describedby')).toBeNull();expect(await error.innerText()).toBe('');
-    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.072);
+    expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.07266);
     await width.fill('19');await page.locator('[data-composition="warm-card"]').click();
     expect(await width.inputValue()).toBe('300');expect(await width.getAttribute('aria-invalid')).toBeNull();
     expect(await error.innerText()).toBe('');expect(await page.evaluate(()=>window.__plinth.getSpec().w)).toBe(.3);

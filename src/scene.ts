@@ -170,7 +170,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
 
   let id: DeviceId = initialDevice;
   let sceneId: SceneId = initialScene;
-  let rig: DeviceRig = buildDevice(presetSpec(id), id === 'browser');
+  let rig: DeviceRig = buildDevice(presetSpec(id), id === 'browser', id !== 'browser' && id !== 'card');
   rig.group.name = 'device-rig';
   posePivot.add(rig.group);
   let localGeometry: readonly number[] = cachedLocalGeometry(rig.group, id, rig.spec);
@@ -236,7 +236,9 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
       || verticalTangent <= 0 || horizontalTangent <= 0) {
       throw new Error('Unable to frame device safely.');
     }
-    const referenceFit = Math.max(size.y, size.x / REFERENCE_ASPECT, size.z / REFERENCE_ASPECT) / FRAME_FILL;
+    // P-15 changes only the phone's reference fill; safe framing still follows.
+    const referenceFill = device === 'phone' ? 0.82 : FRAME_FILL;
+    const referenceFit = Math.max(size.y, size.x / REFERENCE_ASPECT, size.z / REFERENCE_ASPECT) / referenceFill;
     const referenceDist = referenceFit / 2 / Math.tan((CAMERA_FOV * Math.PI) / 360) + Math.max(size.z, size.x) / 2;
     const lensScale = Math.tan((CAMERA_FOV * Math.PI) / 360) / Math.tan((fov0 * Math.PI) / 360);
     const candidate = new PerspectiveCamera(fov, aspect, 0.01, 50);
@@ -371,7 +373,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
       let committed = false;
       try {
         if (shapeChanged) {
-          candidateRig = buildDevice(next.spec, next.device === 'browser');
+          candidateRig = buildDevice(next.spec, next.device === 'browser', next.device !== 'browser' && next.device !== 'card');
           if (image) candidateRig.setImage(image.texture, { w: image.meta.width, h: image.meta.height });
           candidateRig.setImageFit(next.fit, next.pad, next.padColor);
         }
@@ -430,7 +432,7 @@ export function createStage(initialDevice: DeviceId, initialScene: SceneId, aspe
       posePivot.remove(rig.group);
       rig.dispose();
       id = next;
-      rig = buildDevice(presetSpec(id), id === 'browser');
+      rig = buildDevice(presetSpec(id), id === 'browser', id !== 'browser' && id !== 'card');
       rig.group.name = 'device-rig';
       posePivot.add(rig.group);
       scene.updateMatrixWorld(true);

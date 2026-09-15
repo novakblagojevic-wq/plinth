@@ -200,7 +200,7 @@ failure faze ili fizički mobilni download prošli; to je acceptance T-P7.
   zlib format; native API je kandidat, prisustvo provereno, exporter nije izgrađen.
 - [HTML download](https://html.spec.whatwg.org/multipage/links.html#downloading-resources):
   korisnički download i ime; ne potvrđuje konkretno ponašanje fizičkog iPad-a.
-- [Gearfall threejs-technique-vault](https://github.com/novakblagojevic-wq/gearfall/blob/main/handoff/skills/threejs-technique-vault.md),
+- [Gearfall threejs-technique-vault](https://github.com/thohared/gearfall/blob/main/handoff/skills/threejs-technique-vault.md),
   pregledan 2026-09-13, redovi 508–524: a-long-expected-party RT/DPR/composite obrazac.
   Stari 'line-449' locator je pomeren. Preuzet je samo princip; bez koda/asseta.
 - Pinovani lokalni Three 0.185.1 izvori su merodavni za inventar: SMAAPass,

@@ -1,6 +1,6 @@
 # Plinth
 
-[![ci](https://github.com/novakblagojevic-wq/plinth/actions/workflows/ci.yml/badge.svg)](https://github.com/novakblagojevic-wq/plinth/actions/workflows/ci.yml)
+[![ci](https://github.com/thohared/plinth/actions/workflows/ci.yml/badge.svg)](https://github.com/thohared/plinth/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 > drop a screenshot, get a studio-lit 3D product shot or a 4-second clip, in the browser, free, no account.

@@ -182,7 +182,7 @@ Step 1 je zapravo već urađen kad koristiš Claude Code na webu — ništa ne k
 Ono što treba jeste da novi repo bude vidljiv u picker-u:
 
 1. GitHub → Settings → Applications → Installed GitHub Apps → **Claude**. Ako je pristup na "Only select repositories", dodaj `plinth`. Ako je "All repositories", već je tu.
-2. Otvori claude.ai/code (ili Code u aplikaciji) → New session → u picker-u izaberi `novakblagojevic-wq/plinth`.
+2. Otvori claude.ai/code (ili Code u aplikaciji) → New session → u picker-u izaberi `thohared/plinth`.
 3. Zalepi T-P1 tiket kao prvi prompt. Sesija sama klonira, radi u branchu i napravi PR.
 
 Ako repo ne vidiš u picker-u ni posle koraka 1, disconnect/connect GitHub u Settings → Connectors; to je poznata boljka.

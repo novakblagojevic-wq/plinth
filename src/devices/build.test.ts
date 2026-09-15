@@ -1,5 +1,5 @@
-import { describe, expect, it } from 'vitest';
-import { Mesh, MeshStandardMaterial, Vector3 } from 'three';
+import { describe, expect, it, vi } from 'vitest';
+import { BufferGeometry, ExtrudeGeometry, Mesh, MeshStandardMaterial, Vector3 } from 'three';
 import { BUILDER_RATIOS, buildDevice } from './build';
 import { DEVICE_IDS, PRESETS, presetSpec } from './presets';
 
@@ -10,6 +10,108 @@ function size(rig: ReturnType<typeof buildDevice>): Vector3 {
 }
 
 describe('§4.2 device builder', () => {
+  it.each(DEVICE_IDS)('F18 %s smoothing preserves ordered geometry and UVs, including laptop base', (id) => {
+    // Observe the real extrusion in metres BEFORE scaling/smoothing, using
+    // exactly the same DeviceSpec. This is not a second copy of the builder.
+    const before = new Map<BufferGeometry, BufferGeometry>();
+    const translate = ExtrudeGeometry.prototype.translate;
+    const spy = vi.spyOn(ExtrudeGeometry.prototype, 'translate').mockImplementation(function (
+      this: ExtrudeGeometry, x: number, y: number, z: number,
+    ) {
+      const result = translate.call(this, x, y, z);
+      if (!before.has(this)) before.set(this, this.clone());
+      return result;
+    });
+    let rig: ReturnType<typeof buildDevice> | undefined;
+    try {
+      rig = buildDevice(presetSpec(id), id === 'browser');
+      const surfaces = [rig.frame];
+      if (id === 'laptop') {
+        const base = rig.group.getObjectByName('base');
+        expect(base).toBeInstanceOf(Mesh);
+        surfaces.push(base as Mesh);
+      }
+      for (const surface of surfaces) {
+        const actual = surface.geometry;
+        const original = before.get(actual);
+        expect(original, `${id}/${surface.name}: captured unsmoothed extrusion`).toBeDefined();
+        if (!original) throw new Error('Missing pre-smoothing snapshot');
+        const position = actual.getAttribute('position');
+        const priorPosition = original.getAttribute('position');
+        expect(position.count).toBe(priorPosition.count);
+        expect(position.itemSize).toBe(3);
+        expect(position.count % 3).toBe(0);
+        // 0.1 micrometre covers Float32 mm→m roundoff; no vertex sorting:
+        // each ordered coordinate must remain, preserving triangle winding.
+        let maximumPositionError = 0;
+        for (let i = 0; i < position.array.length; i++) {
+          maximumPositionError = Math.max(maximumPositionError,
+            Math.abs(position.array[i]! - priorPosition.array[i]!));
+        }
+        expect(maximumPositionError, `${id}/${surface.name}: positions`).toBeLessThanOrEqual(1e-7);
+        expect(actual.index).toBeNull();
+        expect(original.index).toBeNull();
+        expect(actual.groups).toEqual(original.groups);
+        const uv = actual.getAttribute('uv');
+        const priorUV = original.getAttribute('uv');
+        expect(uv.count).toBe(priorUV.count);
+        expect(uv.itemSize).toBe(priorUV.itemSize);
+        expect(uv.array, `${id}/${surface.name}: UVs`).toEqual(priorUV.array);
+        const normals = actual.getAttribute('normal');
+        expect(normals.count).toBe(position.count);
+        const a = new Vector3(); const b = new Vector3();
+        let interpolated = 0;
+        for (let i = 0; i < normals.count; i++) {
+          a.fromBufferAttribute(normals, i);
+          expect(Number.isFinite(a.lengthSq())).toBe(true);
+          expect(a.length()).toBeCloseTo(1, 5);
+          b.fromBufferAttribute(normals, i - i % 3 + (i + 1) % 3);
+          if (a.dot(b) < 0.9999) interpolated++;
+        }
+        expect(interpolated, `${id}/${surface.name}: smooth normals`).toBeGreaterThan(10);
+      }
+    } finally {
+      spy.mockRestore();
+      rig?.dispose();
+      for (const geometry of before.values()) geometry.dispose();
+    }
+  });
+
+  it.each(DEVICE_IDS)('T-P9c %s owns its appropriate backing across rebuilds', (id) => {
+    const dark = id !== 'browser' && id !== 'card';
+    const rig = buildDevice(presetSpec(id), id === 'browser', dark);
+    const backing = rig.group.getObjectByName('backplate') as Mesh;
+    const material = backing.material as MeshStandardMaterial;
+    expect(material).not.toBe(rig.frame.material);
+    if (dark) expect(Math.max(material.color.r, material.color.g, material.color.b)).toBeLessThan(0.01);
+    else expect(material.color.equals((rig.frame.material as MeshStandardMaterial).color)).toBe(true);
+    let disposed = 0;
+    material.addEventListener('dispose', () => disposed++);
+    rig.update({ ...rig.spec, w: rig.spec.w + 0.001 });
+    expect((rig.group.getObjectByName('backplate') as Mesh).material).toBe(material);
+    expect(disposed).toBe(0);
+    if (!dark) {
+      rig.update({ ...rig.spec, frameMetalness: 0.22, frameRoughness: 0.44 });
+      expect(material.metalness).toBe(0.22); expect(material.roughness).toBe(0.44);
+    }
+    rig.dispose();
+    expect(disposed).toBe(1);
+  });
+
+  it.each(DEVICE_IDS)('T-P9c %s bevel normals vary within triangles, avoiding flat bands', (id) => {
+    const rig = buildDevice(presetSpec(id), id === 'browser');
+    const normals = rig.frame.geometry.getAttribute('normal');
+    const a = new Vector3(); const b = new Vector3();
+    let interpolated = 0;
+    for (let i = 0; i < normals.count; i += 3) {
+      a.fromBufferAttribute(normals, i); b.fromBufferAttribute(normals, i + 1);
+      expect(a.length()).toBeCloseTo(1, 5);
+      if (a.dot(b) < 0.9999) interpolated++;
+    }
+    expect(interpolated).toBeGreaterThan(10);
+    rig.dispose();
+  });
+
   it.each(DEVICE_IDS)('%s bounding box matches its spec', (id) => {
     const spec = PRESETS[id];
     const rig = buildDevice(spec, id === 'browser');
