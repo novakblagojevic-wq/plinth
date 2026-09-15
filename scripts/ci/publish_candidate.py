@@ -123,7 +123,7 @@ def publish(root, run_id, runner_token, write_token, runner_sha, expected_ticket
                 env={**os.environ, 'GIT_ASKPASS': str(askpass), 'GIT_TERMINAL_PROMPT': '0', 'ASTRA_PUBLISH_TOKEN': write_token})
     require(api(REPOSITORY, '/git/ref/heads/' + branch, write_token)['object']['sha'] == meta['tested_sha'], 'Remote SHA mismatch')
     require(api(REPOSITORY, '/git/ref/heads/main', write_token)['object']['sha'] == meta['base_sha'], 'main changed; branch exists but needs retest')
-    prs = api(REPOSITORY, '/pulls?state=all&head=novakblagojevic-wq:' + branch, write_token)
+    prs = api(REPOSITORY, '/pulls?state=all&head=thohared:' + branch, write_token)
     if prs:
         require(len(prs) == 1 and prs[0]['head']['sha'] == meta['tested_sha'], 'Existing PR differs')
         return prs[0]['html_url']
