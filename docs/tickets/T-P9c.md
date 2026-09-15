@@ -75,6 +75,15 @@ or workflow changed.
   the final captures. Browser/card remain thin and use shell-colored backing;
   physical device rims are smooth with a dark recess. Portrait demo side
   margins remain. No screen shader or alpha/color threshold changed.
-- Final full npm run ci is running. The earlier run was deliberately stopped
-  before F16's source correction and is not counted as a pass. Cloud CI/PG/PNG,
+- Final full npm run ci passes on implementation commit 48a778559aced485a191d26cc4e7563f29c5b8ad:
+  81/81 guards (12 files, 1061.79 s), TypeScript, 188/188 unit tests (27 files,
+  15.06 s). Earlier interrupted runs are not counted as passes. F17's focused
+  negative probe fails on the old 72 mm preset as expected.
+- Publication attempt was rejected by automatic approval review: uploading
+  repository source/documentation to GitHub requires explicit user approval.
+  No remote tree, branch, PR, deployment or merge was created by that attempt.
+  Local implementation and visual evidence are complete; cloud CI/PG/PNG,
   baseline bless, fresh review and merge remain outstanding.
+
+Owner explicitly approved GitHub draft-PR publication in the next turn.
+The earlier approval gate is resolved; no merge or deployment is authorized.
