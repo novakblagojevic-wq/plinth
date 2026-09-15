@@ -85,5 +85,19 @@ defaults now use Contain, preserving the full 2880x1800 image without stretching
 small top/bottom margins are intentional. Phone and browser defaults are kept.
 Existing default-Fit expectations are updated in place with all actions and
 readiness checks retained. Coverage includes both explicit shared Fit values
-and image bounds/aspect within the three real screen rectangles. Final capture,
-CI/build and publication results will be recorded after completion.
+and image bounds/aspect within the three real screen rectangles.
+
+- Actual UI capture: all 20 device/scene pairs and six 2x downloads completed;
+  success=true, errors=[]. The three corrected exports are 3840x2160 and were
+  visually inspected. All eight phone/browser scene PNGs are byte-identical
+  to the earlier captures. Two affected composition thumbnails are refreshed.
+- Restoring the old Cover default in an isolated copy fails the geometric
+  containment assertion: fitted width 0.256 m exceeds the tablet's 0.232 m
+  screen. The seed was removed; four positive demo lifecycle/settings tests
+  pass. The shared-state check retains both explicit Contain and Cover cases.
+- Full npm run ci PASSED on ad2e79cae537ef59e2818ef35de6851e91d6088e,
+  tree 627e8bdf640c3409cc1191fd1b5607662e08ca82: 85/85 guards in 13 files
+  (968.09 s), TypeScript and 197/197 units in 28 files (10.74 s). Build passes
+  with the existing 700 kB warning (705.06 kB output). Only this ticket's
+  evidence changes after that tested commit. No baseline changes or bless;
+  the new published head still needs matching cloud checks and fresh review.
