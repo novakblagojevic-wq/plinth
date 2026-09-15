@@ -1,3 +1,5 @@
+import { demoFit, loadDemoImages } from './screen/demo';
+import { SCENE_PRESETS } from './scene/presets';
 import { decodeHash, encodeHash, snapshotState } from './state/codec';
 import { createNavigation } from './state/navigation';
 import { createShare } from './state/share';
@@ -143,9 +145,11 @@ async function boot(): Promise<void> {
   // Capture mode selects its named pose before warm-up and never creates a scheduler.
   stage.setPose(initialPose, true);
   const cap = Math.min(8192, renderer.capabilities.maxTextureSize);
-  const demo = await loadImage(new URL('demo.png', document.baseURI).href, cap);
-  stage.setImage(demo.bitmap, { ...demo.meta, identity: 'demo' });
-  if (demo.meta.downscaled) showNote(`Demo resized to ${demo.meta.width} × ${demo.meta.height} (limit ${cap} px).`);
+  const demos = await loadDemoImages(document.baseURI, cap);
+  stage.setDemoImages(demos);
+  stage.setFit(demoFit(initialDevice));
+  const demo = stage.getImage()!;
+  if (demo.downscaled) showNote(`Demo resized to ${demo.width} × ${demo.height} (limit ${cap} px).`);
   // Studio's existing warm-up must see this image/SDF variant in every preset.
   const studio = createStudio(renderer, stage, { msaa });
   cleanup.push(() => studio.dispose());
@@ -175,6 +179,14 @@ async function boot(): Promise<void> {
       document.body.style.height = `${height}px`;
       document.body.style.setProperty('--viewport-height', `${height}px`);
     } else document.body.style.removeProperty('height');
+    const state = settings?.get();
+    const background = state?.background;
+    const workspace = document.querySelector<HTMLElement>('#workspace')!;
+    workspace.style.background = background?.mode === 'gradient'
+      ? `linear-gradient(${background.top}, ${background.bottom})`
+      : background?.mode === 'solid' ? background.solid
+      : background?.mode === 'transparent' ? '#e9ebee'
+      : SCENE_PRESETS[state?.scene ?? initialScene].background;
     const { w, h } = viewport();
     if (w !== renderWidth || h !== renderHeight) {
       renderer.setSize(w, h, false);

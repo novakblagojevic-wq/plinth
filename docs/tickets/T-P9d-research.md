@@ -25,7 +25,8 @@ withheld. Clauses: §2, §4.1/P-9, §4.4/P-6/P-7, §4.6/P-13, §4.8/P-14, §7.
   tone/glare/alpha limits, depth and screen geometry. Do not weaken existing tests.
 - F4: src/ui/panel.css forces a green-grey body while the canvas has its selected
   background. Extend matching preset/solid background into the desktop workspace
-  gutters. Keep panel/export layout and transparent checkerboard unchanged.
+  gutters. Remove only the canvas outer CSS shadow, which makes a darker seam. Keep
+  panel/export layout and transparent checkerboard unchanged.
 - F5: saved actual card-clean-white PNG is neutral. Red in a *-diff.png is the
   pixelmatch diagnostic, not the render (scripts/pg-capture.mjs). Inspect actual
   source render before changing neutral lighting. Contact sheets downsample
@@ -33,6 +34,7 @@ withheld. Clauses: §2, §4.1/P-9, §4.4/P-6/P-7, §4.6/P-13, §4.8/P-14, §7.
   screenshots or changing fixed DPR1 acceptance captures.
 
 Write set: src/main.ts, src/scene.ts, src/settings.ts, src/screen/material.ts;
+src/ui/panel.css;
 src/screen/demo.ts and tests; existing screen lifecycle/material tests;
 additive guards/demo-edges.test.ts; public/demo-landscape.png;
 public/compositions/*.png; scripts/demo-edges-capture.mjs; this research/ticket.

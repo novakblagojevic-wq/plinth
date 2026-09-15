@@ -3,7 +3,7 @@ canvas { display:block; }
 body.editor { --ink:#242823; --muted:#666d63; --line:#dce0d7; background:#e9ece5!important; color:var(--ink); font:.875rem/1.45 system-ui,sans-serif; display:grid; grid-template-columns:minmax(0,1fr) 320px; height:100dvh; }
 .editor * { box-sizing:border-box; }
 #workspace { min-width:0; min-height:0; display:flex; justify-content:center; align-items:center; overflow:hidden; }
-.editor #stage { flex:none; background-color:#fff; background-image:conic-gradient(#e2e3e0 25%,transparent 0 50%,#e2e3e0 0 75%,transparent 0); background-size:20px 20px; box-shadow:0 8px 40px #283b3010; }
+.editor #stage { flex:none; background-color:#fff; background-image:conic-gradient(#e2e3e0 25%,transparent 0 50%,#e2e3e0 0 75%,transparent 0); background-size:20px 20px; box-shadow:none; }
 #panel { overflow-y:auto; overscroll-behavior:contain; touch-action:pan-y; background:#fafbf8; padding:24px 20px max(24px,env(safe-area-inset-bottom)); border-left:1px solid var(--line); min-height:0; scrollbar-gutter:stable; }
 .editor h1 { font-size:1.25rem; line-height:1.2; letter-spacing:-.6px; margin:8px 0 0; font-weight:600; }
 .eyebrow { font-size:.6875rem; font-weight:700; letter-spacing:3px; color:#667d58; }
