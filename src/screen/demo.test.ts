@@ -6,6 +6,7 @@ import { snapshotState } from '../state/codec';
 import { DEVICE_IDS } from '../devices/presets';
 import { demoFit, type DemoImages } from './demo';
 import { latestImageLoader } from './load';
+import { fitTransform } from './fit';
 const image = (width: number, height: number) => ({
   bitmap: { width, height, close: vi.fn() } as unknown as ImageBitmap,
   meta: { width, height, originalWidth: width, originalHeight: height, cap: 8192, downscaled: false, identity: 'demo' as const },
@@ -29,12 +30,14 @@ describe('T-P9d demo selection and ownership',()=>{
   }
   for(const id of DEVICE_IDS){
    store.setDevice(id);expect(texture()).toBe(id==='phone'?portrait:landscape);
-   expect(stage.getImage()).toMatchObject({identity:'demo',originalWidth:id==='phone'?845:2880,fit:id==='phone'?'contain':'cover'});
+   expect(stage.getImage()).toMatchObject({identity:'demo',originalWidth:id==='phone'?845:2880,fit:id==='browser'?'cover':'contain'});
   }
-  store.compose('dark-laptop');expect(store.get()).toMatchObject({fit:'cover',composition:'dark-laptop'});
-  store.apply({fit:'contain'});const shared=snapshotState(store.get(),false);
-  store.reset();expect(texture()).toBe(portrait);store.hydrate(shared);
-  expect(texture()).toBe(landscape);expect(store.get().fit).toBe('contain');
+  store.compose('dark-laptop');expect(store.get()).toMatchObject({fit:'contain',composition:'dark-laptop'});
+  for (const fit of ['contain','cover'] as const) {
+   store.apply({fit});const shared=snapshotState(store.get(),false);
+   store.reset();expect(texture()).toBe(portrait);store.hydrate(shared);
+   expect(texture()).toBe(landscape);expect(store.get().fit).toBe(fit);
+  }
   expect(demos.portrait.bitmap.close).not.toHaveBeenCalled();expect(demos.landscape.bitmap.close).not.toHaveBeenCalled();
   store.dispose();stage.dispose();stage.dispose();
   expect(demos.portrait.bitmap.close).toHaveBeenCalledTimes(1);expect(demos.landscape.bitmap.close).toHaveBeenCalledTimes(1);
@@ -65,7 +68,19 @@ describe('T-P9d demo selection and ownership',()=>{
   await expect(fail('invalid')).rejects.toThrow('bad image');store.setDevice('card');expect(texture()).toBe(upload);
   stage.dispose();store.dispose();
  });
- it('keeps the phone contain recipe and fills wide demo classes',()=>{
-  expect(demoFit('phone')).toBe('contain');for(const id of ['tablet','laptop','browser','card'] as const)expect(demoFit(id)).toBe('cover');
+ it('keeps the full landscape image inside tablet, laptop and card without distortion',()=>{
+  expect(demoFit('phone')).toBe('contain');expect(demoFit('browser')).toBe('cover');
+  const {stage,store}=setup();
+  try {
+   for(const id of ['tablet','laptop','card'] as const){
+    store.setDevice(id);
+    const image=stage.getImage()!;const screen=stage.getRig().screenSize;
+    const fitted=fitTransform({w:image.width,h:image.height},screen,image.fit,image.pad);
+    expect(fitted.image.w).toBeLessThanOrEqual(screen.w+1e-12);
+    expect(fitted.image.h).toBeLessThanOrEqual(screen.h+1e-12);
+    expect(fitted.image.w/fitted.image.h).toBeCloseTo(2880/1800,12);
+    expect(image.fit).toBe('contain');
+   }
+  } finally {store.dispose();stage.dispose();}
  });
 });

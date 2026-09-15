@@ -18,7 +18,7 @@ it('T-P9d real controls choose full demo screens and retain an uploaded image',a
   for(const id of ['tablet','laptop','card','browser','phone'] as const){
    await page.getByLabel('Device',{exact:true}).selectOption(id);
    expect(await page.evaluate(()=>window.__plinth.getImage())).toMatchObject({identity:'demo',originalWidth:id==='phone'?845:2880,originalHeight:id==='phone'?1862:1800});
-   expect(await page.locator('#control-fit').inputValue()).toBe(id==='phone'?'contain':'cover');
+   expect(await page.locator('#control-fit').inputValue()).toBe(id==='browser'?'cover':'contain');
   }
   const screenshot=PNG.sync.read(await page.screenshot());
   const boxes=await page.evaluate(()=>({stage:document.querySelector('#stage')!.getBoundingClientRect().toJSON(),workspace:document.querySelector('#workspace')!.getBoundingClientRect().toJSON()}));
@@ -66,6 +66,6 @@ it('T-P9d clean-white card actual render has a neutral white background',async()
   for(const [x,y] of [[4,4],[640,4],[1275,4],[4,400],[1275,400]]){
    const offset=(y!*png.width+x!)*4;expect([...png.data.subarray(offset,offset+4)]).toEqual([255,255,255,255]);
   }
-  expect(await page.evaluate(()=>window.__plinth.getImage())).toMatchObject({originalWidth:2880,originalHeight:1800,fit:'cover'});
+  expect(await page.evaluate(()=>window.__plinth.getImage())).toMatchObject({originalWidth:2880,originalHeight:1800,fit:'contain'});
  } finally{await page.close();}
 });

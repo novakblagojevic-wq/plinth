@@ -22,7 +22,7 @@ try {
    await page.getByLabel('Lighting',{exact:true}).selectOption(scene);
    const state=await page.evaluate(()=>({settings:window.__plinth.getSettings(),image:window.__plinth.getImage()}));
    assert.equal(state.image.originalWidth,device==='phone'?845:2880);
-   assert.equal(state.settings.fit,device==='phone'?'contain':'cover');
+   assert.equal(state.settings.fit,device==='browser'?'cover':'contain');
    await page.locator('#stage').screenshot({path:`${out}/${device}-${scene}.png`});
    report.captures.push({device,scene,...state});
    if(scene==='soft-studio'||device==='card'&&scene==='clean-white') {

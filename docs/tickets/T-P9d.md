@@ -1,7 +1,7 @@
 # T-P9d — appropriate demos and continuous screen edges
 
 Document of record: PLINTH_SPEC §2, §4.1/P-9, §4.4/P-6/P-7,
-§4.6/P-13, §4.8/P-14, §7. Research: T-P9d-research F1–F6.
+§4.6/P-13, §4.8/P-14, §7. Research: T-P9d-research F1–F7.
 Builder: Codex (backend model identifier not exposed).
 Owner feedback expands polish beyond T-P9c's original no-screen-shader scope;
 this separate ticket/PR records that boundary, stacked on PR #27.
@@ -11,7 +11,8 @@ this separate ticket/PR records that boundary, stacked on PR #27.
 1. Restore exact approved landscape demo; keep portrait on phone and landscape
    on all wide classes. Cache/mount synchronously, with explicit disposal and
    recovery ownership. A user image supersedes the demo bank permanently.
-2. Wide demo startup/device/preset choices show Cover in the actual Fit control.
+2. After owner review (F7), phone/tablet/laptop/card demo startup/device/preset
+   choices show Contain; browser keeps Cover in the actual Fit control.
    Preserve user-image behavior and explicit shared-state settings.
 3. Replace stochastic edge coverage with deterministic SDF alpha testing and
    existing SMAA. Compare native edge captures; keep opaque physical screen,
@@ -23,7 +24,7 @@ this separate ticket/PR records that boundary, stacked on PR #27.
 
 ## Acceptance / write set
 
-Use F1–F6's write set. Add lifecycle/demo-choice tests and a focused real-browser
+Use F1–F7's write set. Add lifecycle/demo-choice tests and a focused real-browser
 regression for image switching, upload preservation, neutral clean-white,
 matching workspace gutters and non-hashed edge shader. Extend the existing
 first-ready guard to both phone and tablet with their exact source dimensions
@@ -33,6 +34,9 @@ new CI PG/PNG and independent review remain required. Baselines remain read-only
 no bless, merge, deploy or competition submission.
 
 ## Implementation evidence
+
+The following records the first reviewed candidate. F7 below supersedes its
+tablet/laptop/card Cover defaults; the portrait/landscape assets stay identical.
 
 - Restored landscape bytes from bdebd02: 2880x1800, 259141 bytes,
   SHA256 72128b4a216b772a1215424906b321e1f9472b1e2165fcb144e29ef81f97d585.
@@ -73,3 +77,13 @@ no bless, merge, deploy or competition submission.
   public assets and capture script remain identical to the captured 02ebd48.
 - Cloud CI/PG/PNG and independent review remain pending. Owner did not bless
   the prior candidate set; fixtures remain unchanged. No merge or deployment.
+
+## F7 — uncropped three-device follow-up
+
+Owner identified cropped left/right content in tablet/laptop/card. Their demo
+defaults now use Contain, preserving the full 2880x1800 image without stretching;
+small top/bottom margins are intentional. Phone and browser defaults are kept.
+Existing default-Fit expectations are updated in place with all actions and
+readiness checks retained. Coverage includes both explicit shared Fit values
+and image bounds/aspect within the three real screen rectangles. Final capture,
+CI/build and publication results will be recorded after completion.

@@ -113,7 +113,7 @@ import { PNG } from 'pngjs';
 
 it.each([
   ['phone', 845, 1862, 'contain'],
-  ['tablet', 2880, 1800, 'cover'],
+  ['tablet', 2880, 1800, 'contain'],
 ] as const)('T-P3/T-P9d: %s first ready transition contains its committed demo, after image/SDF warm-up', async (device, originalWidth, originalHeight, fit) => {
   const page = await browser.newPage({ viewport: { width: 1280, height: 800 }, deviceScaleFactor: 1 });
   try {

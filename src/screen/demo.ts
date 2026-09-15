@@ -4,7 +4,9 @@ import { loadImage } from './load';
 
 export type DemoImage = Awaited<ReturnType<typeof loadImage>>;
 export interface DemoImages { portrait: DemoImage; landscape: DemoImage }
-export const demoFit = (device: DeviceId): FitMode => device === 'phone' ? 'contain' : 'cover';
+// Preserve the complete screenshot on physical screens and card; browser's
+// existing cover recipe is unchanged by the owner's three-device correction.
+export const demoFit = (device: DeviceId): FitMode => device === 'browser' ? 'cover' : 'contain';
 
 /** Stage takes ownership only once both local images have decoded. */
 export async function loadDemoImages(base: string, cap: number): Promise<DemoImages> {
