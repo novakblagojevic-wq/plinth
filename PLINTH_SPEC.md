@@ -781,5 +781,25 @@ Scope explicitly excludes motion/video, presets/geometry redesign, cloud saves,
 accounts, external assets and a new UI framework. T-P8a follows T-P9 core;
 T-P10's measured performance gate and outstanding Safari test remain required.
 
+### P-15 — Prihvaćeni veći phone kadar (2026-09-15)
+
+Autor: Codex, planski upis pre T-P9c implementacije. Vlasnik je prihvatio
+konkretni phone/soft-studio prikaz iz T-P9c istraživanja, zatim odobrio
+prenos u aplikaciju i doradu ostalih uređaja. Cites: §4.3, P-11(2–3),
+P-12/P-13 i `docs/tickets/T-P9c-research.md` F4/F15.
+
+Za referentnu udaljenost u P-11(3), klasa phone koristi FRAME_FILL=0.82;
+tablet/laptop/browser/card zadržavaju 0.6. Ovo je jedina izmena ugovora
+kamere: prihvaćeni ugao i FOV, konzervativne world granice, NDC margina
+|x|,|y|≤0.9, near/far, numeričko odbijanje, orbit i outputPad ostaju.
+Izbor se zasniva na device ID-u, nikada na dimenzijama upload slike.
+Kamera se i dalje udaljava kada je potrebno da zaštiti ceo uređaj.
+Postojeći v1 linkovi zadržavaju sve svoje zapisane spec/view vrednosti;
+izvedena udaljenost se računa ovim pravilom i za njih. Ne uvodi se zoom
+polje, nova verzija state-a, crop ili letterbox.
+
+Odobrenje vizuelnog pravca nije CI/PG prolaz, baseline bless, nezavisan
+review, merge ili release. Izmena je u zasebnom planskom commitu po P-5.
+
 ## §10 Open TODO(spec)
 - Codename/product name before T-P10 (README, OG title).
