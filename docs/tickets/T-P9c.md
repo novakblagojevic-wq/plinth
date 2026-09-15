@@ -87,3 +87,33 @@ or workflow changed.
 
 Owner explicitly approved GitHub draft-PR publication in the next turn.
 The earlier approval gate is resolved; no merge or deployment is authorized.
+
+## Independent review follow-up — F18
+
+Review PRR_kwDOUPRdOs8AAAABNtw31Q on fbbec4e returned FIXUP:
+(1) owner CI-baseline bless remains missing; (2) geometry/UV and laptop-base
+regression evidence was incomplete. F18 in the research records the response
+before test implementation. Only build.test.ts and this ticket/research change.
+No runtime source, image, baseline, guard or workflow changes.
+
+Five added cases compare the final frame with a clone observed after the real
+metre-space extrusion translation, before smoothing. The laptop case also
+checks the named base. Ordered positions (absolute tolerance 1e-7 m), exact UV
+arrays, vertex count, non-indexed topology and groups are preserved. Every
+normal must be finite/unit, and both frame and base must interpolate normals
+inside triangles. The spy is restored and snapshots disposed in finally.
+
+Focused positive run: all 30 builder tests pass. Four isolated mutation runs
+prove the new checks fail for the right reason: +0.1 mm vertex displacement
+(5/5 fail on positions), +0.125 U (5/5 fail on UV), swapped first two triangle
+vertices (5/5 fail on positions/order), and skipped smoothing on the 14 mm
+laptop base (1/1 fails specifically on laptop/base normal interpolation).
+These were separate source-copy mutations, not weakened application assertions.
+Typecheck and production build pass. Full local npm run ci on d7dea89cf83be17dc1bb1deb63233e371103da30 passes:
+81/81 guards (12 files, 952.28 s), TypeScript, 193/193 unit tests (27 files,
+11.68 s). Only this evidence paragraph changes after that tested commit.
+
+Existing independent cloud evidence for fbbec4e: CI/PNG/Candidate protocol
+SUCCESS; PG FAILURE with 20/20 image comparisons above the unchanged threshold.
+CI PG artifact 10414549670 from run 35014186721 remains the candidate set, not
+blessed references. Review, owner bless and final cloud results remain gates.
